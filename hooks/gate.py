@@ -28,6 +28,10 @@ from pudding_check import parse_rows, env_of, check, PAIR_WORDS  # noqa: E402
 LOCAL_ENV = re.compile(r"localhost|127\.0\.0\.1|0\.0\.0\.0|file://|\blocal(?:host)?\b", re.I)
 # ponytail: receipts older than this are ignored when the session start is unknown.
 STALE_SECONDS = 6 * 3600
+# Blocks allowed per user prompt. The harness force-ends at 8 and prints a warning
+# naming the hook, so stay well under it - but bailing on stop_hook_active alone
+# (the first design) let every stop after the first one through unchecked.
+MAX_BLOCKS_PER_PROMPT = 3
 
 
 def session_start(session_id, root):
@@ -43,6 +47,24 @@ def session_start(session_id, root):
     except Exception:
         pass
     return time.time() - STALE_SECONDS
+
+
+def blocks_this_prompt(prompt_id, root):
+    """How many times this same user prompt has already been blocked."""
+    if not prompt_id:
+        return 0
+    n = 0
+    try:
+        for line in core.log_path(root).read_text(encoding="utf-8").splitlines()[-300:]:
+            try:
+                e = json.loads(line)
+            except Exception:
+                continue
+            if e.get("event") == "blocked" and e.get("prompt_id") == prompt_id:
+                n += 1
+    except Exception:
+        pass
+    return n
 
 
 def source_changed(root, since):
@@ -95,12 +117,12 @@ def have_summary(rows):
     return ", ".join(f"{n} {m}" for m, n in sorted(counts.items(), key=lambda kv: -kv[1]))
 
 
-def render(unmet, receipt, rows):
+def render(unmet, receipt, rows, root):
     """stopReason is read by a human; reason is read by the model."""
     c = unmet[0]
     said = c.sentence if len(c.sentence) <= 76 else c.sentence[:73] + "..."
     have = have_summary(rows)
-    where = str(receipt.name) if receipt else "no receipt written this session"
+    where = str(receipt) if receipt else "none written this session"
 
     stop_reason = (
         "\n\U0001F36E  no pudding, no done.\n\n"
@@ -115,7 +137,9 @@ def render(unmet, receipt, rows):
     lines = [
         "pudding blocked this turn: a completion claim with no matching evidence.",
         "",
-        f"receipt: {where}",
+        f"receipt read: {where}",
+        f"receipts are read from exactly one place: {root / 'receipts'}/",
+        "a receipts/ folder anywhere else in the tree is not read.",
         "",
     ]
     for c in unmet:
@@ -139,8 +163,12 @@ def render(unmet, receipt, rows):
 def decide(data, root):
     """The whole verdict, as a pure function of the hook input and the repo. Returns
     the JSON payload to print ({} means: let the turn end)."""
-    if data.get("stop_hook_active"):
-        return {}  # one block per claim; never fight the harness cap
+    prompt_id = data.get("prompt_id") or ""
+    spent = blocks_this_prompt(prompt_id, root)
+    if spent >= MAX_BLOCKS_PER_PROMPT:
+        return {}  # said our piece; never fight the harness cap
+    if not prompt_id and data.get("stop_hook_active"):
+        return {}  # no prompt_id to count against, so fall back to the coarse guard
 
     claims = detect(data.get("last_assistant_message") or "")
     if not claims:
@@ -162,7 +190,8 @@ def decide(data, root):
     receipt_ok = bool(receipt) and not findings
 
     unmet = [c for c in claims if not (receipt_ok and satisfies(c.family, rows, env))]
-    base = {"session_id": session_id, "event_kind": data.get("hook_event_name", "Stop"),
+    base = {"session_id": session_id, "prompt_id": prompt_id,
+            "event_kind": data.get("hook_event_name", "Stop"),
             "claims": [c.family.name for c in claims],
             "receipt": receipt.name if receipt else None, "mode": mode}
 
@@ -170,7 +199,7 @@ def decide(data, root):
         core.log({"event": "earned", **base}, root)
         return {}
 
-    stop_reason, reason = render(unmet, receipt, rows)
+    stop_reason, reason = render(unmet, receipt, rows, root)
     if receipt and findings:
         reason += "\n\nThe receipt is also invalid:\n" + "\n".join(f"  - {f}" for f in findings)
 
@@ -260,10 +289,27 @@ env: {env}
         out = run(root, "It works end to end in the browser.")
         assert out.get("decision") == "block" and "weakened" in out["systemMessage"], out
 
+    with tempfile.TemporaryDirectory() as td:  # every stop is checked, up to the cap
+        root = setup(td, UNIT)
+        msg = "It works end to end in the browser."
+        for i in range(MAX_BLOCKS_PER_PROMPT):
+            out = run(root, msg, prompt_id="P1", stop_hook_active=bool(i))
+            assert out.get("decision") == "block", f"stop {i} must still be checked: {out}"
+        assert run(root, msg, prompt_id="P1", stop_hook_active=True) == {}, "cap reached -> yield"
+        assert run(root, msg, prompt_id="P2").get("decision") == "block", "new prompt, fresh budget"
+        # with no prompt_id the coarse guard still applies
+        assert run(root, msg, stop_hook_active=True) == {}
+
+    with tempfile.TemporaryDirectory() as td:  # the block names the one path it reads
+        root = setup(td, UNIT)
+        out = run(root, "It works end to end in the browser.", prompt_id="P9")
+        assert "receipts are read from exactly one place" in out["reason"], out["reason"]
+        assert str(root) in out["reason"]
+
     with tempfile.TemporaryDirectory() as td:  # no receipt at all
         root = setup(td, None)
         out = run(root, "Done and verified.")
-        assert out.get("decision") == "block" and "no receipt" in out["reason"], out
+        assert out.get("decision") == "block" and "none written this session" in out["reason"], out
 
     print("gate: ok")
 

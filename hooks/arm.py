@@ -17,7 +17,8 @@ PROTOCOL = """\
 
 A completion claim is earned by attached evidence, never asserted from memory. Before
 saying done / it works / verified / deployed, there must be a row in a receipt at
-receipts/<feature>-<date>.md, written WHILE testing, not reconstructed after:
+<project root>/receipts/<feature>-<date>.md - that exact folder, not a receipts/ dir
+inside some subproject - written WHILE testing, not reconstructed after:
 
     | claim | method | artifact | status |
 

@@ -25,6 +25,11 @@ import pudding_core as core          # noqa: E402
 from claims import detect            # noqa: E402
 from pudding_check import parse_rows, env_of, check, PAIR_WORDS  # noqa: E402
 
+# Runtime artifacts, not the code a claim is about. Without this, a background
+# writer (x-account's batch touches pipeline.db-wal every 10 minutes) ages out
+# every receipt for reasons unrelated to the work being claimed.
+VOLATILE = re.compile(r"\.(?:db|db-shm|db-wal|sqlite3?|log|jsonl|lock|pyc|pid|tmp)$", re.I)
+
 LOCAL_ENV = re.compile(r"localhost|127\.0\.0\.1|0\.0\.0\.0|file://|\blocal(?:host)?\b", re.I)
 # ponytail: receipts older than this are ignored when the session start is unknown.
 STALE_SECONDS = 6 * 3600
@@ -83,9 +88,63 @@ def source_changed(root, since):
     return True  # never let a git failure quietly disarm the gate
 
 
-def fresh_receipt(root, since):
+def newest_source_mtime(root):
+    """When the code last changed. Evidence written before the code it describes is
+    evidence for different work - the first live session accepted a four-minute-old
+    receipt about run.sh as proof for a claim about tunnel.sh.
+
+    ponytail: reads only files git already reports as dirty, so ignored build output
+    and data churn cannot age a receipt out. A background writer committing tracked
+    files mid-session can still do it; per-path exclusions if that bites.
+    """
+    newest = 0.0
     try:
-        cands = [p for p in (root / "receipts").glob("*.md") if p.stat().st_mtime >= since]
+        out = subprocess.run(["git", "-C", str(root), "status", "--porcelain"],
+                             capture_output=True, text=True, timeout=3)
+        for line in out.stdout.splitlines():
+            rel = line[3:].strip().strip('"').split(" -> ")[-1]
+            if rel.startswith(("receipts/", ".claude/")) or VOLATILE.search(rel):
+                continue
+            try:
+                newest = max(newest, (root / rel).stat().st_mtime)
+            except OSError:
+                continue
+    except Exception:
+        pass
+    return max(newest, newest_source_commit(root, newest))
+
+
+def newest_source_commit(root, floor):
+    """When code was last COMMITTED. x-account's batch commits the agent's edits
+    within ten minutes, so a status-only check goes blind the moment it runs.
+
+    Only commits touching non-volatile paths count, so the same batch writing
+    data/pipeline.db every tick does not age a receipt out on its own cadence.
+    """
+    newest, ts = 0.0, 0.0
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(root), "log", "--since=@%d" % int(floor or 0),
+             "--format=%ct", "--name-only"],
+            capture_output=True, text=True, timeout=5)
+        for line in out.stdout.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            if line.isdigit():
+                ts = float(line)
+            elif not (line.startswith(("receipts/", ".claude/")) or VOLATILE.search(line)):
+                newest = max(newest, ts)
+    except Exception:
+        pass
+    return newest
+
+
+def fresh_receipt(root, since):
+    """The newest receipt that is both from this session and not older than the code."""
+    floor = max(since, newest_source_mtime(root))
+    try:
+        cands = [p for p in (root / "receipts").glob("*.md") if p.stat().st_mtime >= floor]
     except Exception:
         return None
     return max(cands, key=lambda p: p.stat().st_mtime) if cands else None
@@ -288,6 +347,31 @@ env: {env}
         core.state_path(root).write_text("---\nmode: off\n---\n")
         out = run(root, "It works end to end in the browser.")
         assert out.get("decision") == "block" and "weakened" in out["systemMessage"], out
+
+    with tempfile.TemporaryDirectory() as td:  # a receipt older than the code is not evidence
+        root = setup(td, UNIT + "\n" + UI)
+        def commit(msg):
+            sp.run(["git", "-C", str(root), "add", "-A"], check=True, capture_output=True)
+            sp.run(["git", "-C", str(root), "-c", "user.email=t@t", "-c", "user.name=t",
+                    "commit", "-qm", msg], check=True, capture_output=True)
+        commit("baseline")
+        (root / "receipts" / "r.md").touch()
+        msg = "It works end to end in the browser."
+        assert run(root, msg) == {}, "a receipt newer than the code earns it"
+
+        (root / "noise.db-wal").write_text("churn")   # background writer, uncommitted
+        assert run(root, msg) == {}, "a volatile artifact is not code"
+        commit("data only")                            # ...and committing it changes nothing
+        assert run(root, msg) == {}, "committing volatile data is not code"
+
+        time.sleep(1.1)                                # git commit time has 1s resolution
+        (root / "src.py").write_text("x = 2\n")        # real code moves on; the receipt does not
+        out = run(root, msg)
+        assert out.get("decision") == "block", f"stale receipt must not earn a new claim: {out}"
+        assert "none written this session" in out["reason"]
+        commit("src change")                           # and status going blind must not rescue it
+        out = run(root, msg)
+        assert out.get("decision") == "block", f"committed code must still age the receipt: {out}"
 
     with tempfile.TemporaryDirectory() as td:  # every stop is checked, up to the cap
         root = setup(td, UNIT)

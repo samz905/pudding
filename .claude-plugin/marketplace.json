@@ -1,0 +1,17 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "pudding",
+  "description": "No pudding, no done. Your agent's completion claims have to carry proof.",
+  "owner": {
+    "name": "samz905",
+    "url": "https://github.com/samz905"
+  },
+  "plugins": [
+    {
+      "name": "pudding",
+      "description": "Blocks a done-claim that has no matching evidence. A real-user claim needs a real-user artifact; a thousand unit tests never add up to one.",
+      "source": "./",
+      "category": "development"
+    }
+  ]
+}

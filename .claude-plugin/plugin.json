@@ -1,0 +1,13 @@
+{
+  "name": "pudding",
+  "version": "0.1.0",
+  "description": "Blocks a done-claim that has no matching evidence. The proof is in the pudding, not in the promise.",
+  "author": {
+    "name": "samz905",
+    "url": "https://github.com/samz905"
+  },
+  "homepage": "https://github.com/samz905/pudding",
+  "repository": "https://github.com/samz905/pudding",
+  "license": "MIT",
+  "keywords": ["verification", "evidence", "accountability", "testing", "hooks"]
+}

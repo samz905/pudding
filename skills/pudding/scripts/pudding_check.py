@@ -29,6 +29,28 @@ NEEDS_PAIR = re.compile(r"matches the design|likeness|matches the mock", re.I)
 PAIR_WORDS = re.compile(r"\bvs\b|before|after|reference|pair", re.I)
 
 
+def parse_rows(text):
+    """Every claim row in a receipt, as [claim, method, artifact, status].
+
+    Shared with the pudding gate so the linter and the hook can never disagree
+    about what a receipt says.
+    """
+    rows = []
+    for line in text.splitlines():
+        if line.strip().startswith("|") and line.count("|") >= 5:
+            cells = [c.strip() for c in line.strip().strip("|").split("|")]
+            if len(cells) >= 4 and cells[0].lower() not in ("claim", "---", ""):
+                if set(cells[0]) != {"-"}:
+                    rows.append(cells[:4])
+    return rows
+
+
+def env_of(text):
+    """The receipt's declared env, or '' - first-class because headless is not the user's Chrome."""
+    m = re.search(r"^env:\s*(.+)$", text, re.M)
+    return m.group(1).strip() if m else ""
+
+
 def check(path: Path):
     text = path.read_text(encoding="utf-8-sig")
     finds = []
@@ -43,13 +65,7 @@ def check(path: Path):
     if not m or not m.group(1).strip():
         finds.append("no env declared (where were artifacts captured?)")
 
-    rows = []
-    for line in text.splitlines():
-        if line.strip().startswith("|") and line.count("|") >= 5:
-            cells = [c.strip() for c in line.strip().strip("|").split("|")]
-            if len(cells) >= 4 and cells[0].lower() not in ("claim", "---", ""):
-                if set(cells[0]) != {"-"}:
-                    rows.append(cells[:4])
+    rows = parse_rows(text)
     if not rows:
         finds.append("no claim rows found")
 
@@ -81,8 +97,51 @@ def check(path: Path):
     return finds
 
 
+def demo():
+    import tempfile
+    good = """# Receipt: thing (2026-09-17)
+tier: smoke
+env: real Chrome, macOS
+
+| claim | method | artifact | status |
+|---|---|---|---|
+| unlock deducts 20 points | db | wallet 20 -> 0 | verified |
+| unlock works end to end for a real user | real-ui | shots/unlock.png before->after | verified |
+
+## Not tested (residue only)
+- concurrent double-click (out of tier)
+## Cleanup
+- e2e-* rows remaining: 0
+"""
+    with tempfile.TemporaryDirectory() as td:
+        p = Path(td) / "r.md"
+        p.write_text(good, encoding="utf-8")
+        assert check(p) == [], check(p)
+        assert len(parse_rows(good)) == 2
+        assert env_of(good) == "real Chrome, macOS"
+
+        # a real-user claim resting on a unit test is the whole point
+        p.write_text(good.replace("| real-ui | shots/unlock.png before->after |", "| unit | test_unlock |"), encoding="utf-8")
+        assert any("needs real-ui" in f for f in check(p)), check(p)
+
+        # verified with no artifact
+        p.write_text(good.replace("wallet 20 -> 0", "-"), encoding="utf-8")
+        assert any("no artifact" in f for f in check(p)), check(p)
+
+        # the residue section is mandatory
+        p.write_text(good.replace("## Not tested (residue only)", "## Notes"), encoding="utf-8")
+        assert any("Not tested" in f for f in check(p)), check(p)
+
+        # cleanup must assert a number, not a vibe
+        p.write_text(good.replace("- e2e-* rows remaining: 0", "- looked fine"), encoding="utf-8")
+        assert any("Cleanup" in f for f in check(p)), check(p)
+    print("pudding_check: ok")
+
+
 def main():
     args = sys.argv[1:]
+    if args and args[0] == "--demo":
+        demo(); return
     if not args:
         print(__doc__.strip().splitlines()[0]); sys.exit(2)
     paths = sorted(Path("receipts").glob("*.md")) if args[0] == "--all" else [Path(a) for a in args]

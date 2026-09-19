@@ -87,6 +87,18 @@ FAMILIES = [
         "the prior consumer still running",
     ),
     Family(
+        "completeness",
+        r"\ball items\b(?:\s+\w+){0,2}\s+(?:built|done|shipped|implemented|in)\b"
+        r"|\ball (?:\d+|the|of the)?\s*(?:items?|asks?|points?|rows?|feedback|fixes)\b"
+        r"(?:\s+\w+){0,3}\s+(?:are|is|were)?\s*(?:done|built|shipped|implemented|addressed|verified)"
+        r"|everything (?:from|on|in|else|in) [^.]{0,60}?(?:is|are) (?:done|built|verified|addressed|implemented|shipped)"
+        r"|everything(?: else)? (?:is|are) (?:done|built|verified|addressed|implemented|shipped)"
+        r"|the rest (?:are|is) (?:done|built|verified|addressed)"
+        r"|(?:all|every) (?:the )?feedback (?:is|are|has been) (?:done|addressed|implemented|verified)",
+        ANY, False, False,
+        "one verified row per item you are calling done - not one row standing in for the set",
+    ),
+    Family(
         "generic",
         r"\bit works\b|\bdone and verified\b|\ball green\b|\bfully tested\b|\beverything works\b"
         r"|\bconfirmed working\b|\bworks now\b|\bnow works\b|\bis working\b|\bworks correctly\b",
@@ -94,6 +106,29 @@ FAMILIES = [
         "at least one verified row with a real artifact",
     ),
 ]
+
+# Files whose change a person can only judge by looking. Deliberately broad on
+# markup and styles, narrower on scripts, since a .ts file is usually not a surface.
+UI_FILE = re.compile(
+    r"\.(?:tsx|jsx|vue|svelte|css|scss|sass|less|html|htm|astro)$"
+    r"|(?:^|/)(?:components?|pages?|views?|ui|screens?|templates?|layouts?|static|public|"
+    r"frontend|client|www)/.*\.(?:js|ts|mjs|py)$",
+    re.I,
+)
+
+# Completeness asserted by PARTITION: a done-list and a not-done heading, which
+# together claim exhaustiveness without the word "all" ever appearing. This is the
+# form that hid a whole missing feature in a real status report.
+DONE_HEAD = re.compile(
+    r"^\s*#{1,4}\s*(?:what\s+shipped|done(?:\s+and\s+verified)?|shipped|completed|"
+    r"implemented|delivered)\b|^\s*\*\*(?:done|what shipped|done and verified)\b",
+    re.I | re.M,
+)
+NOT_DONE_HEAD = re.compile(
+    r"^\s*#{1,4}\s*(?:not\s+done|not\s+tested|deferred|remaining|out\s+of\s+scope|"
+    r"still\s+open|left)\b|^\s*\*\*(?:not done|not tested|deferred|you told me to ignore)\b",
+    re.I | re.M,
+)
 
 # A sentence carrying any of these is not asserting completion - it is hedging,
 # planning, or refusing to claim. Measured against real transcripts: without this,
@@ -130,6 +165,43 @@ def strip_quoted(text: str) -> str:
     for rx in (_FENCE, _INLINE, _BLOCKQUOTE, _QUOTED):
         text = rx.sub(" . ", text)
     return text
+
+
+def done_items(message: str):
+    """The items a message is calling done, from the list it presents them in.
+
+    Real reports enumerate with middle dots, bullets or commas under a Done heading.
+    Whatever comes back here is what a receipt has to cover, one row each.
+    """
+    m = DONE_HEAD.search(message or "")
+    if not m:
+        return []
+    tail = message[m.end():]
+    tail = re.split(r"^\s*(?:#{1,4}\s|\*\*[A-Z])", tail, maxsplit=1, flags=re.M)[0]
+    items = []
+    for line in tail.splitlines():
+        line = line.strip().lstrip("-*\u2022 ").strip()
+        if not line:
+            continue
+        parts = re.split(r"\s*[\u00b7\u2022;]\s*|,\s+(?=[a-z@\"])", line)
+        for part in parts:
+            part = re.sub(r"[*`_]", "", part).strip(" .:")
+            if 3 <= len(part) <= 90:
+                items.append(part)
+        if len(items) > 40:
+            break
+    return items[:40]
+
+
+def claims_completeness(message: str):
+    """True when a message claims a whole set is handled - by saying so, or by
+    partitioning everything into a done list and a not-done list."""
+    if not message:
+        return False
+    body = strip_quoted(message)
+    if any(re.search(f.pattern, body, re.I) for f in FAMILIES if f.name == "completeness"):
+        return True
+    return bool(DONE_HEAD.search(message) and NOT_DONE_HEAD.search(message))
 
 
 def detect(message: str):

@@ -34,6 +34,14 @@ method is exactly one of: unit | api | db | wire | real-ui. It must match the cl
     faster / lighter                    -> a before -> after pair
     the logic is correct                -> unit/api: necessary, never sufficient
 
+Three rules that are not negotiable:
+ 1. A real-ui artifact is a FILE ON DISK the user can open - receipts/evidence/ is where
+    they go. Reading an image into your own context is not showing it to anyone.
+ 2. Changed any UI? A screenshot is required whether or not you claim anything about it.
+ 3. Calling a SET of things done ("all items built", "everything except X", or a Done
+    list beside a Not-done list) needs one row PER ITEM. One row cannot stand in for
+    fifteen - that is how a whole unbuilt feature once sat inside a "done" list.
+
 A thousand unit rows never add up to one "works as a real user". Cannot reach something?
 Record it as a row with status `blocked: <why>` and say so - a gap you name is honest, a
 gap you omit reads as covered.

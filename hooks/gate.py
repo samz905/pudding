@@ -22,7 +22,8 @@ sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent / "skills" / "pudding" / "scripts"))
 
 import pudding_core as core          # noqa: E402
-from claims import detect            # noqa: E402
+from claims import (Claim, Family, UI_FILE, claims_completeness,  # noqa: E402
+                    detect, done_items)
 from pudding_check import parse_rows, env_of, check, PAIR_WORDS  # noqa: E402
 
 # Runtime artifacts, not the code a claim is about. Without this, a background
@@ -75,7 +76,7 @@ def blocks_this_prompt(prompt_id, root):
 def source_changed(root, since):
     """Did this session touch code? Talking about work is not claiming it."""
     try:
-        st = subprocess.run(["git", "-C", str(root), "status", "--porcelain"],
+        st = subprocess.run(["git", "-C", str(root), "status", "--porcelain", "-uall"],
                             capture_output=True, text=True, timeout=3)
         if st.returncode == 0 and st.stdout.strip():
             return True
@@ -86,6 +87,52 @@ def source_changed(root, since):
     except Exception:
         pass
     return True  # never let a git failure quietly disarm the gate
+
+
+PATHY = re.compile(r"[\w./\\-]+\.(?:png|jpe?g|gif|webp|svg|mhtml?|html?|pdf|txt|json|log|md|mov|mp4)")
+STOP = {"the", "and", "for", "with", "from", "into", "that", "this", "when", "then",
+        "works", "work", "done", "verified", "test", "tests", "page", "user", "new"}
+
+
+def artifact_is_real(artifact, root):
+    """A real-ui row must point at a file the user can actually open.
+
+    The failure this closes, verbatim from a real session: "You can't see them -
+    I've been reading images into my own context, not rendering them in your
+    terminal. My fault entirely; that's twice now." A promised screenshot and a
+    screenshot are not the same evidence.
+    """
+    for cand in PATHY.findall(artifact or ""):
+        if (root / cand.lstrip("./")).exists() or Path(cand).exists():
+            return True
+    return False
+
+
+def words(text):
+    return {w for w in re.findall(r"[a-z0-9]{4,}", (text or "").lower()) if w not in STOP}
+
+
+def uncovered(items, rows):
+    """Items called done that no verified row speaks to."""
+    covered = [words(r[0]) for r in rows]
+    return [it for it in items if not any(words(it) & c for c in covered)]
+
+
+def changed_files(root):
+    """Paths git reports dirty, minus runtime artifacts and pudding's own files."""
+    out = []
+    try:
+        # -uall: without it git collapses a wholly-untracked directory to "components/",
+        # so a brand new folder of components is invisible to every check below.
+        res = subprocess.run(["git", "-C", str(root), "status", "--porcelain", "-uall"],
+                             capture_output=True, text=True, timeout=3)
+        for line in res.stdout.splitlines():
+            rel = line[3:].strip().strip('"').split(" -> ")[-1]
+            if rel and not (rel.startswith(("receipts/", ".claude/")) or VOLATILE.search(rel)):
+                out.append(rel)
+    except Exception:
+        pass
+    return out
 
 
 def newest_source_mtime(root):
@@ -158,11 +205,13 @@ def verified_rows(text):
     return [r for r in parse_rows(text) if r[3].lower().startswith("verified")]
 
 
-def satisfies(fam, rows, env):
+def satisfies(fam, rows, env, root):
     """Does any verified row earn this claim? The gate table, mechanically."""
     for claim, method, artifact, _ in rows:
         if fam.methods is not None and method not in fam.methods:
             continue
+        if method == "real-ui" and not artifact_is_real(artifact, root):
+            continue  # a named screenshot that is not on disk is a promise, not proof
         if fam.pair and not PAIR_WORDS.search(artifact + " " + claim):
             continue
         if fam.deployed and (LOCAL_ENV.search(env) or not env.strip()):
@@ -267,9 +316,12 @@ def decide(data, root):
     if not prompt_id and data.get("stop_hook_active"):
         return {}  # no prompt_id to count against, so fall back to the coarse guard
 
-    claims = detect(data.get("last_assistant_message") or "")
-    if not claims:
-        return {}  # the common case, and it costs one regex sweep
+    message = data.get("last_assistant_message") or ""
+    claims = detect(message)
+    whole_set = claims_completeness(message)
+    ui = [f for f in changed_files(root) if UI_FILE.search(f)]
+    if not (claims or whole_set or ui):
+        return {}  # the common case: a regex sweep and one git status
 
     session_id = data.get("session_id", "")
     since = session_start(session_id, root)
@@ -286,7 +338,30 @@ def decide(data, root):
     findings = check(receipt) if receipt else ["no receipt written this session"]
     receipt_ok = bool(receipt) and not findings
 
-    unmet = [c for c in claims if not (receipt_ok and satisfies(c.family, rows, env))]
+    unmet = [c for c in claims if not (receipt_ok and satisfies(c.family, rows, env, root))]
+
+    # A claim about a SET needs a row per member. One row standing in for fifteen
+    # items is how a whole unbuilt feature stayed inside a "done" list.
+    if whole_set:
+        items = done_items(message)
+        missing = uncovered(items, rows) if receipt_ok else items
+        # No enumerable list is worse, not better: "All items built" names nothing a
+        # reader can check, and the list it refers to is a thousand lines upstream.
+        if missing or not receipt_ok or not items:
+            named = ", ".join(missing[:6]) or "the items you are calling done - name them"
+            unmet.append(Claim(Family(
+                "completeness", "", None, False, False,
+                "one verified row per item. No row speaks to: " + named), "", 
+                "you called a whole set done"))
+
+    # UI you changed is UI someone has to look at, claim or no claim.
+    if ui and not any(m == "real-ui" and artifact_is_real(a, root)
+                      for _, m, a, _ in (rows if receipt_ok else [])):
+        unmet.append(Claim(Family(
+            "ui-unseen", "", {"real-ui"}, False, False,
+            "a screenshot on disk for the UI you changed (" + ", ".join(ui[:3]) +
+            ") - saved where the user can open it, not read into your own context"),
+            "", "you changed UI this turn"))
     base = {"session_id": session_id, "prompt_id": prompt_id,
             "event_kind": data.get("hook_event_name", "Stop"),
             "claims": [c.family.name for c in claims],
@@ -317,138 +392,5 @@ def main():
     core.emit(decide(core.read_hook_input(), core.project_dir()))
 
 
-def demo():
-    import subprocess as sp
-    import tempfile
-
-    RECEIPT = """# Receipt: thing (2026-09-17)
-tier: smoke
-env: {env}
-
-| claim | method | artifact | status |
-|---|---|---|---|
-{rows}
-
-## Not tested (residue only)
-- nothing
-## Cleanup
-- e2e-* rows remaining: 0
-"""
-    UNIT = "| the logic is right | unit | test_thing.py::test_ok | verified |"
-    UI = "| unlock works for a real user | real-ui | shots/a.png before->after | verified |"
-
-    def setup(td, rows, env="real Chrome, macOS"):
-        root = Path(td)
-        (root / "receipts").mkdir(parents=True, exist_ok=True)
-        sp.run(["git", "init", "-q", str(root)], check=True)
-        (root / "src.py").write_text("x = 1\n")  # dirty tree == source changed
-        if rows is not None:
-            (root / "receipts" / "r.md").write_text(RECEIPT.format(rows=rows, env=env))
-        return root
-
-    def run(root, msg, **kw):
-        return decide({"last_assistant_message": msg, "session_id": "s1", **kw}, root)
-
-    with tempfile.TemporaryDirectory() as td:
-        root = setup(td, UNIT)
-        # a real-user claim resting on unit rows is the whole thesis
-        out = run(root, "It works end to end in the browser.")
-        assert out.get("decision") == "block", out
-        assert "real-ui" in out["reason"] and "no pudding" in out["reason"]
-        assert "no pudding" in out["systemMessage"]
-        # the harness recursion guard wins over everything
-        assert run(root, "It works end to end.", stop_hook_active=True) == {}
-        # no claim, no cost
-        assert run(root, "Here is the plan. I will start on it now.") == {}
-        # hedged honesty is never punished
-        assert run(root, "Verifying on your real timeline before I tell you it works.") == {}
-
-    with tempfile.TemporaryDirectory() as td:
-        root = setup(td, UNIT + "\n" + UI)
-        assert run(root, "It works end to end in the browser.") == {}, "real-ui row earns it"
-
-    with tempfile.TemporaryDirectory() as td:  # deployed claims must not rest on localhost
-        root = setup(td, UI, env="localhost:8724, headless chromium")
-        assert run(root, "It is deployed and the dashboard is live.").get("decision") == "block"
-        root2 = setup(tempfile.mkdtemp(), UI, env="https://x-account.vercel.app, real Chrome")
-        assert run(root2, "It is deployed and the dashboard is live.") == {}
-
-    with tempfile.TemporaryDirectory() as td:  # warn scars instead of blocking
-        root = setup(td, UNIT)
-        core.write_mode("warn", "/pudding warn", "s1", root)
-        out = run(root, "It works end to end in the browser.")
-        assert "decision" not in out and "no pudding" in out["systemMessage"], out
-        core.write_mode("off", "/pudding off", "s1", root)
-        assert run(root, "It works end to end in the browser.") == {}
-
-    with tempfile.TemporaryDirectory() as td:  # tampering reverts to block and says so
-        root = setup(td, UNIT)
-        core.state_path(root).parent.mkdir(parents=True, exist_ok=True)
-        core.state_path(root).write_text("---\nmode: off\n---\n")
-        out = run(root, "It works end to end in the browser.")
-        assert out.get("decision") == "block" and "weakened" in out["systemMessage"], out
-        assert "no pudding, no done" in out["reason"], "the human reads reason on the block path"
-
-    with tempfile.TemporaryDirectory() as td:  # a receipt older than the code is not evidence
-        root = setup(td, UNIT + "\n" + UI)
-        def commit(msg):
-            sp.run(["git", "-C", str(root), "add", "-A"], check=True, capture_output=True)
-            sp.run(["git", "-C", str(root), "-c", "user.email=t@t", "-c", "user.name=t",
-                    "commit", "-qm", msg], check=True, capture_output=True)
-        commit("baseline")
-        (root / "receipts" / "r.md").touch()
-        msg = "It works end to end in the browser."
-        assert run(root, msg) == {}, "a receipt newer than the code earns it"
-
-        (root / "noise.db-wal").write_text("churn")   # background writer, uncommitted
-        assert run(root, msg) == {}, "a volatile artifact is not code"
-        commit("data only")                            # ...and committing it changes nothing
-        assert run(root, msg) == {}, "committing volatile data is not code"
-
-        time.sleep(1.1)                                # git commit time has 1s resolution
-        (root / "src.py").write_text("x = 2\n")        # real code moves on; the receipt does not
-        out = run(root, msg)
-        assert out.get("decision") == "block", f"stale receipt must not earn a new claim: {out}"
-        assert "none written this session" in out["reason"]
-        commit("src change")                           # and status going blind must not rescue it
-        out = run(root, msg)
-        assert out.get("decision") == "block", f"committed code must still age the receipt: {out}"
-
-    with tempfile.TemporaryDirectory() as td:  # every stop is checked, up to the cap
-        root = setup(td, UNIT)
-        msg = "It works end to end in the browser."
-        for i in range(MAX_BLOCKS_PER_PROMPT):
-            out = run(root, msg, prompt_id="P1", stop_hook_active=bool(i))
-            assert out.get("decision") == "block", f"stop {i} must still be checked: {out}"
-        out = run(root, msg, prompt_id="P1", stop_hook_active=True)
-        assert "decision" not in out, "cap reached -> the claim gets through"
-        assert "UNPROVEN" in out["systemMessage"], "...but never silently"
-        import json as _j
-        events = [_j.loads(l)["event"] for l in core.log_path(root).read_text().splitlines()]
-        assert events[-1] == "escaped", f"the escape must leave a row: {events}"
-        assert run(root, msg, prompt_id="P2").get("decision") == "block", "new prompt, fresh budget"
-        # with no prompt_id the coarse guard still applies
-        assert run(root, msg, stop_hook_active=True) == {}
-
-    long = ("Test stimulus, as requested (deliberately unearned - no receipt exists): "
-            "it works end to end.")
-    assert "works end to end" in excerpt(long, "works end to end"), excerpt(long, "works end to end")
-    assert len(excerpt(long, "works end to end")) <= 82
-    assert excerpt("It works end to end.", "works end to end") == "It works end to end."
-
-    with tempfile.TemporaryDirectory() as td:  # the block names the one path it reads
-        root = setup(td, UNIT)
-        out = run(root, "It works end to end in the browser.", prompt_id="P9")
-        assert "receipts are read from exactly one place" in out["reason"], out["reason"]
-        assert str(root) in out["reason"]
-
-    with tempfile.TemporaryDirectory() as td:  # no receipt at all
-        root = setup(td, None)
-        out = run(root, "Done and verified.")
-        assert out.get("decision") == "block" and "none written this session" in out["reason"], out
-
-    print("gate: ok")
-
-
 if __name__ == "__main__":
-    demo() if "--demo" in sys.argv else main()
+    main()

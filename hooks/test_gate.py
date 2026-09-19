@@ -17,10 +17,15 @@ def main():
     with _tf.TemporaryDirectory() as _td:
         from gate import artifact_is_real
         _r = Path(_td)
-        assert not artifact_is_real("shots/ghost.png (before->after)", _r)
-        (_r / "shots").mkdir(); (_r / "shots" / "real.png").write_bytes(b"x")
-        assert artifact_is_real("shots/real.png (before->after)", _r)
+        ev = _r / "receipts" / "evidence"
+        ev.mkdir(parents=True)
+        assert not artifact_is_real("receipts/evidence/ghost.png (before->after)", _r)
+        (ev / "real.png").write_bytes(b"x")
+        assert artifact_is_real("receipts/evidence/real.png (before->after)", _r)
         assert not artifact_is_real("I looked at it in Chrome", _r)
+        # a real file in a temp dir is still not somewhere the user will look
+        stray = _r / "stray.png"; stray.write_bytes(b"x")
+        assert not artifact_is_real("stray.png", _r), "outside the evidence dir is not evidence"
 
     import subprocess as sp
     import tempfile
@@ -39,15 +44,17 @@ env: {env}
 - e2e-* rows remaining: 0
 """
     UNIT = "| the logic is right | unit | test_thing.py::test_ok | verified |"
-    UI = "| unlock works for a real user | real-ui | shots/a.png before->after | verified |"
+    UI = ("| unlock works for a real user | real-ui | "
+          "receipts/evidence/a.png before->after | verified |")
 
     def setup(td, rows, env="real Chrome, macOS"):
         root = Path(td)
         (root / "receipts").mkdir(parents=True, exist_ok=True)
         sp.run(["git", "init", "-q", str(root)], check=True)
         (root / "src.py").write_text("x = 1\n")  # dirty tree == source changed
-        (root / "shots").mkdir(exist_ok=True)
-        (root / "shots" / "a.png").write_bytes(b"\x89PNG fixture")  # the row must point at a real file
+        ev = root / "receipts" / "evidence"
+        ev.mkdir(parents=True, exist_ok=True)
+        (ev / "a.png").write_bytes(b"\x89PNG fixture")  # the row must point at a real file
         if rows is not None:
             (root / "receipts" / "r.md").write_text(RECEIPT.format(rows=rows, env=env))
         return root
@@ -111,7 +118,11 @@ env: {env}
         commit("data only")                            # ...and committing it changes nothing
         assert run(root, msg) == {}, "committing volatile data is not code"
 
-        time.sleep(1.1)                                # git commit time has 1s resolution
+        # Pin the receipt's mtime well into the past instead of racing git's 1-second
+        # commit resolution - this test flaked roughly one run in five on timing alone.
+        import os
+        old = time.time() - 60
+        os.utime(root / "receipts" / "r.md", (old, old))
         (root / "src.py").write_text("x = 2\n")        # real code moves on; the receipt does not
         out = run(root, msg)
         assert out.get("decision") == "block", f"stale receipt must not earn a new claim: {out}"
@@ -176,8 +187,7 @@ env: {env}
         assert "Button.tsx" in out["reason"], out["reason"]
 
         # and a real screenshot on disk clears it
-        (root / "receipts" / "r.md").write_text(
-            RECEIPT.format(rows=UI, env="real Chrome") .replace("shots/a.png", "shots/a.png"))
+        (root / "receipts" / "r.md").write_text(RECEIPT.format(rows=UI, env="real Chrome"))
         (root / "receipts" / "r.md").touch()
         out = run(root, "Rewrote the button.")
         assert out == {}, f"a real screenshot clears it: {out}"

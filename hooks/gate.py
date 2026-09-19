@@ -95,15 +95,24 @@ STOP = {"the", "and", "for", "with", "from", "into", "that", "this", "when", "th
 
 
 def artifact_is_real(artifact, root):
-    """A real-ui row must point at a file the user can actually open.
+    """A real-ui row must point at a file the user can open, where they look for it.
 
-    The failure this closes, verbatim from a real session: "You can't see them -
-    I've been reading images into my own context, not rendering them in your
-    terminal. My fault entirely; that's twice now." A promised screenshot and a
-    screenshot are not the same evidence.
+    Existence alone is too weak a rule. A real session produced
+    /var/folders/nm/.../claude-chrome-screenshots-RecJyX/screenshot-1789691621795-0.jpg
+    - a genuine file, in a temp dir the user will never open. And before that:
+    "You can't see them - I've been reading images into my own context, not
+    rendering them in your terminal. My fault entirely; that's twice now."
+
+    So the artifact has to be inside the project's evidence dir.
     """
+    root = root.resolve()
+    ev = (root / core.evidence_dir(root)).resolve()
     for cand in PATHY.findall(artifact or ""):
-        if (root / cand.lstrip("./")).exists() or Path(cand).exists():
+        try:
+            full = (root / cand.lstrip("./")).resolve()
+        except OSError:
+            continue
+        if full.exists() and ev in full.parents:
             return True
     return False
 
@@ -274,6 +283,7 @@ def render(unmet, receipt, rows, root):
         "",
         f"receipt read: {where}",
         f"receipts are read from exactly one place: {root / 'receipts'}/",
+        f"real-ui artifacts must live under: {root / core.evidence_dir(root)}/",
         "a receipts/ folder anywhere else in the tree is not read.",
         "",
     ]
@@ -359,8 +369,8 @@ def decide(data, root):
                       for _, m, a, _ in (rows if receipt_ok else [])):
         unmet.append(Claim(Family(
             "ui-unseen", "", {"real-ui"}, False, False,
-            "a screenshot on disk for the UI you changed (" + ", ".join(ui[:3]) +
-            ") - saved where the user can open it, not read into your own context"),
+            "a screenshot for the UI you changed (" + ", ".join(ui[:3]) + ") saved in " +
+            core.run_folder(prompt_id, root) + "/ - not a temp dir, not your own context"),
             "", "you changed UI this turn"))
     base = {"session_id": session_id, "prompt_id": prompt_id,
             "event_kind": data.get("hook_event_name", "Stop"),

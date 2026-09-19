@@ -35,8 +35,9 @@ method is exactly one of: unit | api | db | wire | real-ui. It must match the cl
     the logic is correct                -> unit/api: necessary, never sufficient
 
 Three rules that are not negotiable:
- 1. A real-ui artifact is a FILE ON DISK the user can open - receipts/evidence/ is where
-    they go. Reading an image into your own context is not showing it to anyone.
+ 1. A real-ui artifact is a FILE the user can open, saved in THIS RUN'S evidence folder
+    (named for you on every prompt). Reading an image into your own context shows it to
+    nobody, and a path under /var/folders is a file nobody will ever open.
  2. Changed any UI? A screenshot is required whether or not you claim anything about it.
  3. Calling a SET of things done ("all items built", "everything except X", or a Done
     list beside a Not-done list) needs one row PER ITEM. One row cannot stand in for

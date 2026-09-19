@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 MODES = ("block", "warn", "off")
+DEFAULT_EVIDENCE = "receipts/evidence"
 DEFAULT_MODE = "block"
 STRICTNESS = {"block": 2, "warn": 1, "off": 0}
 
@@ -88,6 +89,46 @@ def read_mode(root: Path = None):
     if not authorized and STRICTNESS[mode] < STRICTNESS[default]:
         return default, False, fm
     return mode, True, fm
+
+
+def evidence_dir(root: Path = None) -> str:
+    """Where a real-ui artifact must live. Relative to the project root.
+
+    A knob because the default commits PNGs alongside the code, which some repos
+    will not want. Not a strictness knob - moving it never makes evidence optional.
+    """
+    try:
+        fm = _frontmatter(state_path(root).read_text(encoding="utf-8-sig"))
+        return (fm.get("evidence") or DEFAULT_EVIDENCE).strip().strip("/")
+    except Exception:
+        return DEFAULT_EVIDENCE
+
+
+def run_folder(prompt_id: str, root: Path = None) -> str:
+    """One folder per user request, so a person checks one place for the whole run."""
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    return f"{evidence_dir(root)}/{stamp}-{(prompt_id or 'adhoc')[:6]}"
+
+
+def write_setting(key: str, value: str, prompt: str, session_id: str, root: Path = None) -> Path:
+    """Update one frontmatter key, preserving the others."""
+    try:
+        fm = _frontmatter(state_path(root).read_text(encoding="utf-8-sig"))
+    except Exception:
+        fm = {}
+    fm[key] = value
+    fm.update({"set_by": "user-prompt", "session_id": session_id,
+               "at": datetime.now(timezone.utc).isoformat(),
+               "prompt": prompt[:200].replace('"', "'")})
+    p = state_path(root)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    body = "".join(f"{k}: {v}\n" if k != "prompt" else f'prompt: "{v}"\n' for k, v in fm.items())
+    p.write_text("---\n" + body + "---\n\n"
+                 "pudding settings for this project. Only a typed /pudding command writes this.\n"
+                 "  /pudding block | warn | off        strictness\n"
+                 "  /pudding evidence <path>           where real-ui artifacts must live\n",
+                 encoding="utf-8")
+    return p
 
 
 def write_mode(mode: str, prompt: str, session_id: str, root: Path = None) -> Path:
@@ -175,6 +216,12 @@ def demo():
         # Tightening without authorization is fine - you can always be stricter.
         state_path(root).write_text("---\nmode: block\n---\n", encoding="utf-8")
         assert read_mode(root)[:2] == ("block", True)
+
+        assert evidence_dir(root) == DEFAULT_EVIDENCE
+        write_setting("evidence", "docs/proof", "/pudding evidence docs/proof", "s1", root)
+        assert evidence_dir(root) == "docs/proof"
+        assert read_mode(root)[0] == "block", "changing one setting must not clear the others"
+        assert run_folder("abc123def", root).startswith("docs/proof/20")
 
         log({"event": "test", "n": 1}, root)
         assert json.loads(log_path(root).read_text().strip())["event"] == "test"

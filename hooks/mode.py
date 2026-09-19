@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import pudding_core as core  # noqa: E402
 
 CMD = re.compile(r"^\s*[/@]?pudding[ -]?(?:mode\s+)?(block|warn|off|status)\b", re.I)
+EVIDENCE_CMD = re.compile(r"^\s*[/@]?pudding\s+evidence\s+(\S+)", re.I)
 
 BLURB = {
     "block": "block - a claim without matching evidence does not end the turn.",
@@ -24,12 +25,30 @@ BLURB = {
 
 def main():
     data = core.read_hook_input()
-    m = CMD.match(data.get("prompt", "") or "")
+    prompt = data.get("prompt", "") or ""
+    root = core.project_dir()
+
+    ev = EVIDENCE_CMD.match(prompt)
+    if ev:
+        path = ev.group(1).strip().strip("/")
+        core.write_setting("evidence", path, prompt.strip(), data.get("session_id", ""), root)
+        core.log({"event": "setting", "evidence": path, "session_id": data.get("session_id", "")}, root)
+        core.emit({"systemMessage": f"\U0001F36E pudding: real-ui artifacts now live under {path}/"})
+
+    m = CMD.match(prompt)
     if not m:
+        # Every other turn: say where THIS run's evidence goes, before the work starts.
+        # The agent cannot save to the right folder if it only learns the path at the block.
+        if core.read_mode(root)[0] != "off":
+            core.emit({"hookSpecificOutput": {
+                "hookEventName": "UserPromptSubmit",
+                "additionalContext": "[pudding] Screenshots and other real-ui artifacts for "
+                                     "this run go in " + core.run_folder(data.get("prompt_id", ""), root)
+                                     + "/ - a file the user can open, not a temp dir.",
+            }})
         core.emit({})
 
     want = m.group(1).lower()
-    root = core.project_dir()
 
     if want == "status":
         mode, authorized, fm = core.read_mode(root)
@@ -37,6 +56,7 @@ def main():
         msg = f"pudding is {mode}{note}"
         if fm.get("at"):
             msg += f" - set {fm['at'][:19]} by: {fm.get('prompt', '?')}"
+        msg += f"; evidence -> {core.evidence_dir(root)}/"
         core.emit({"systemMessage": msg, "hookSpecificOutput": {
             "hookEventName": "UserPromptSubmit",
             "additionalContext": f"[pudding] {msg}. Tell the user plainly; do not change it yourself.",
@@ -59,6 +79,9 @@ def main():
 
 def demo():
     import tempfile
+    for text in ["/pudding evidence docs/proof", "/pudding evidence .pudding/shots"]:
+        assert EVIDENCE_CMD.match(text), text
+    assert not EVIDENCE_CMD.match("/pudding warn")
     for text, want in [("/pudding warn", "warn"), ("  /pudding off", "off"),
                        ("pudding block", "block"), ("/pudding-mode warn", "warn"),
                        ("/pudding status", "status")]:

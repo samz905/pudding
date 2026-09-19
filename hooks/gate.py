@@ -176,10 +176,25 @@ def have_summary(rows):
     return ", ".join(f"{n} {m}" for m, n in sorted(counts.items(), key=lambda kv: -kv[1]))
 
 
+def excerpt(sentence, phrase, width=76):
+    """Show the claim, not its preamble. Clipping the head once ate the only words
+    that mattered: "Test stimulus, as requested (deliberately unearned - no receipt
+    exists): ..." with `it works end to end` cut off the end."""
+    if len(sentence) <= width:
+        return sentence
+    i = sentence.lower().find(phrase.lower())
+    if i < 0:
+        return sentence[:width - 3] + "..."
+    start = max(0, i - (width - len(phrase)) // 2)
+    end = min(len(sentence), start + width)
+    start = max(0, end - width)
+    return ("..." if start else "") + sentence[start:end].strip() + ("..." if end < len(sentence) else "")
+
+
 def render(unmet, receipt, rows, root):
     """stopReason is read by a human; reason is read by the model."""
     c = unmet[0]
-    said = c.sentence if len(c.sentence) <= 76 else c.sentence[:73] + "..."
+    said = excerpt(c.sentence, c.phrase)
     have = have_summary(rows)
     where = str(receipt) if receipt else "none written this session"
 
@@ -383,6 +398,12 @@ env: {env}
         assert run(root, msg, prompt_id="P2").get("decision") == "block", "new prompt, fresh budget"
         # with no prompt_id the coarse guard still applies
         assert run(root, msg, stop_hook_active=True) == {}
+
+    long = ("Test stimulus, as requested (deliberately unearned - no receipt exists): "
+            "it works end to end.")
+    assert "works end to end" in excerpt(long, "works end to end"), excerpt(long, "works end to end")
+    assert len(excerpt(long, "works end to end")) <= 82
+    assert excerpt("It works end to end.", "works end to end") == "It works end to end."
 
     with tempfile.TemporaryDirectory() as td:  # the block names the one path it reads
         root = setup(td, UNIT)

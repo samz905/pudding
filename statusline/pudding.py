@@ -30,10 +30,10 @@ def counts(root: Path) -> Counter:
 def main():
     root = Path(os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd())
     c = counts(root)
-    earned, blocked, unearned = c["earned"], c["blocked"], c["unearned"]
+    earned, blocked, unearned, escaped = c["earned"], c["blocked"], c["unearned"], c["escaped"]
 
     if "--stats" in sys.argv:
-        total = earned + blocked + unearned
+        total = earned + blocked + unearned + escaped
         if not total:
             print("pudding: no claims recorded yet in this project.")
             return
@@ -41,6 +41,7 @@ def main():
         print(f"  earned           {earned}")
         print(f"  blocked          {blocked}")
         print(f"  shipped unearned {unearned}   (mode was warn)")
+        print(f"  escaped          {escaped}   (repeated past the block budget)")
         print(f"\n{100 * earned // total}% of done-claims carried matching evidence.")
         if c["mode"]:
             print(f"mode changed {c['mode']} time(s); sessions armed: {c['armed']}")

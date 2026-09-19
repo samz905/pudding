@@ -252,7 +252,18 @@ def decide(data, root):
     prompt_id = data.get("prompt_id") or ""
     spent = blocks_this_prompt(prompt_id, root)
     if spent >= MAX_BLOCKS_PER_PROMPT:
-        return {}  # said our piece; never fight the harness cap
+        # Budget spent. The claim gets through - the harness would force-end at 8
+        # anyway - but it does NOT get through quietly. A live probe repeated one
+        # unearned claim four times and escaped on the fourth, and the log showed
+        # three blocks and nothing else, reading exactly like enforcement had held.
+        core.log({"event": "escaped", "session_id": data.get("session_id", ""),
+                  "prompt_id": prompt_id, "event_kind": data.get("hook_event_name", "Stop"),
+                  "blocks_spent": spent}, root)
+        return {"systemMessage": (
+            "\U0001F36E  pudding gave up after %d blocks on this prompt.\n"
+            "  the claim ships UNPROVEN. persistence beat the gate - that is a\n"
+            "  recorded fact, not a pass: .claude/pudding.local.jsonl, event=escaped."
+            % spent)}
     if not prompt_id and data.get("stop_hook_active"):
         return {}  # no prompt_id to count against, so fall back to the coarse guard
 
@@ -409,7 +420,12 @@ env: {env}
         for i in range(MAX_BLOCKS_PER_PROMPT):
             out = run(root, msg, prompt_id="P1", stop_hook_active=bool(i))
             assert out.get("decision") == "block", f"stop {i} must still be checked: {out}"
-        assert run(root, msg, prompt_id="P1", stop_hook_active=True) == {}, "cap reached -> yield"
+        out = run(root, msg, prompt_id="P1", stop_hook_active=True)
+        assert "decision" not in out, "cap reached -> the claim gets through"
+        assert "UNPROVEN" in out["systemMessage"], "...but never silently"
+        import json as _j
+        events = [_j.loads(l)["event"] for l in core.log_path(root).read_text().splitlines()]
+        assert events[-1] == "escaped", f"the escape must leave a row: {events}"
         assert run(root, msg, prompt_id="P2").get("decision") == "block", "new prompt, fresh budget"
         # with no prompt_id the coarse guard still applies
         assert run(root, msg, stop_hook_active=True) == {}

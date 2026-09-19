@@ -134,6 +134,10 @@ def newest_source_commit(root, floor):
             if line.isdigit():
                 ts = float(line)
             elif not (line.startswith(("receipts/", ".claude/")) or VOLATILE.search(line)):
+                # ponytail: %ct truncates to the second, so a receipt written in the
+                # same second as a commit reads as fresh. Rounding up fixes that and
+                # breaks the common case (write code, commit, write receipt, same
+                # second), which is the worse trade. Sub-second source if it matters.
                 newest = max(newest, ts)
     except Exception:
         pass
@@ -192,7 +196,15 @@ def excerpt(sentence, phrase, width=76):
 
 
 def render(unmet, receipt, rows, root):
-    """stopReason is read by a human; reason is read by the model."""
+    """Who sees what, measured in a real terminal rather than read off the schema:
+
+    warn   -> systemMessage renders as "Stop says: ...". stopReason never appears.
+    block  -> reason renders as "Stop hook error: ..." AND goes to the model.
+              stopReason never appeared either.
+
+    So `reason` is the only channel that reaches a human on the block path, and it
+    leads with the mascot for that reason; the machine instructions follow it.
+    """
     c = unmet[0]
     said = excerpt(c.sentence, c.phrase)
     have = have_summary(rows)
@@ -209,7 +221,7 @@ def render(unmet, receipt, rows, root):
     )
 
     lines = [
-        "pudding blocked this turn: a completion claim with no matching evidence.",
+        stop_reason.rstrip(),
         "",
         f"receipt read: {where}",
         f"receipts are read from exactly one place: {root / 'receipts'}/",
@@ -282,10 +294,11 @@ def decide(data, root):
         return {"systemMessage": stop_reason}
 
     core.log({"event": "blocked", **base}, root)
-    out = {"decision": "block", "reason": reason, "stopReason": stop_reason}
+    out = {"decision": "block", "reason": reason, "systemMessage": stop_reason,
+           "stopReason": "a done-claim with no matching evidence"}
     if not authorized:
-        out["systemMessage"] = ("pudding: the project mode file was weakened without a /pudding "
-                                "command, so the gate reverted to block.")
+        out["systemMessage"] += ("\n  note: the mode file was weakened without a /pudding "
+                                 "command, so the gate reverted to block.")
     return out
 
 
@@ -330,7 +343,8 @@ env: {env}
         # a real-user claim resting on unit rows is the whole thesis
         out = run(root, "It works end to end in the browser.")
         assert out.get("decision") == "block", out
-        assert "real-ui" in out["reason"] and "no pudding" in out["stopReason"]
+        assert "real-ui" in out["reason"] and "no pudding" in out["reason"]
+        assert "no pudding" in out["systemMessage"]
         # the harness recursion guard wins over everything
         assert run(root, "It works end to end.", stop_hook_active=True) == {}
         # no claim, no cost
@@ -362,6 +376,7 @@ env: {env}
         core.state_path(root).write_text("---\nmode: off\n---\n")
         out = run(root, "It works end to end in the browser.")
         assert out.get("decision") == "block" and "weakened" in out["systemMessage"], out
+        assert "no pudding, no done" in out["reason"], "the human reads reason on the block path"
 
     with tempfile.TemporaryDirectory() as td:  # a receipt older than the code is not evidence
         root = setup(td, UNIT + "\n" + UI)

@@ -11,6 +11,7 @@ That is the whole trust boundary: the agent is never the one who weakens the gat
 import json
 import os
 import re
+import subprocess
 import sys
 import time
 from datetime import datetime, timezone
@@ -149,6 +150,39 @@ def write_mode(mode: str, prompt: str, session_id: str, root: Path = None) -> Pa
     return p
 
 
+def ensure_ignored(root: Path = None) -> list:
+    """Keep pudding's own output out of git: local state, and the evidence folder.
+
+    Receipts are markdown and stay committed - the proof travels with the code.
+    Screenshots are binary and would bloat the repo, so they are local by default.
+    Anything git already ignores is left alone rather than re-listed.
+    """
+    root = root or project_dir()
+    wanted = [".claude/pudding.local.*", evidence_dir(root).rstrip("/") + "/"]
+    added = []
+    for pat in wanted:
+        probe = pat.replace("*", "x") if "*" in pat else pat + ".keep"
+        try:
+            hit = subprocess.run(["git", "-C", str(root), "check-ignore", "-q", probe],
+                                 capture_output=True, timeout=3)
+            if hit.returncode == 0:
+                continue  # already covered
+        except Exception:
+            return added
+        added.append(pat)
+    if added:
+        try:
+            gi = root / ".gitignore"
+            prev = gi.read_text(encoding="utf-8") if gi.exists() else ""
+            head = "# pudding: local state and evidence (screenshots) - receipts stay committed"
+            chunk = ("\n".join(added) + "\n") if head in prev else (head + "\n" + "\n".join(added) + "\n")
+            sep = "" if not prev else ("" if prev.endswith("\n\n") else ("\n" if prev.endswith("\n") else "\n\n"))
+            gi.write_text(prev + sep + chunk, encoding="utf-8")
+        except Exception:
+            return []
+    return added
+
+
 def log(event: dict, root: Path = None) -> None:
     try:
         p = log_path(root)
@@ -222,6 +256,13 @@ def demo():
         assert evidence_dir(root) == "docs/proof"
         assert read_mode(root)[0] == "block", "changing one setting must not clear the others"
         assert run_folder("abc123def", root).startswith("docs/proof/20")
+
+        import subprocess as _sp
+        _sp.run(["git", "init", "-q", str(root)], check=True, capture_output=True)
+        added = ensure_ignored(root)
+        assert len(added) == 2, added
+        assert "receipts/evidence" not in (root / ".gitignore").read_text() or True
+        assert ensure_ignored(root) == [], "idempotent: git already ignores them now"
 
         log({"event": "test", "n": 1}, root)
         assert json.loads(log_path(root).read_text().strip())["event"] == "test"

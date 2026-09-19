@@ -64,6 +64,8 @@ def main():
 
     if event == "SessionStart":
         core.log({"event": "armed", "session_id": data.get("session_id", ""), "mode": mode}, root)
+        if mode != "off":
+            core.ensure_ignored(root)
 
     if mode == "off":
         core.emit({})

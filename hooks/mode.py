@@ -33,6 +33,7 @@ def main():
         path = ev.group(1).strip().strip("/")
         core.write_setting("evidence", path, prompt.strip(), data.get("session_id", ""), root)
         core.log({"event": "setting", "evidence": path, "session_id": data.get("session_id", "")}, root)
+        core.ensure_ignored(root)  # the new location, not the old one
         core.emit({"systemMessage": f"\U0001F36E pudding: real-ui artifacts now live under {path}/"})
 
     m = CMD.match(prompt)

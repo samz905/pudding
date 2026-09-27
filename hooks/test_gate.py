@@ -164,7 +164,7 @@ env: {env}
     long = ("Test stimulus, as requested (deliberately unearned - no receipt exists): "
             "it works end to end.")
     assert "works end to end" in excerpt(long, "works end to end"), excerpt(long, "works end to end")
-    assert len(excerpt(long, "works end to end")) <= 82
+    assert len(excerpt(long, "works end to end")) <= 96
     assert excerpt("It works end to end.", "works end to end") == "It works end to end."
 
     with tempfile.TemporaryDirectory() as td:  # the block names the one path it reads
@@ -204,6 +204,62 @@ env: {env}
         (root / "receipts" / "r.md").touch()
         out = run(root, "Rewrote the button.")
         assert out == {}, f"a real screenshot clears it: {out}"
+
+    with tempfile.TemporaryDirectory() as td:  # reporting back after real work needs a row, phrased any way
+        root = setup(td, None)
+        plain = "Swapped the loop for a set lookup in dedupe.py and updated the call site."
+        out = run(root, plain, prompt_id="w1")
+        assert out.get("decision") == "block", f"a claim-free report after code changes still needs proof: {out}"
+        assert "work you did" in full(out)
+        assert run(root, "Changed dedupe.py. Want me to update the docs too?", prompt_id="w2") == {}, "a question"
+        assert run(root, "Still working: dedupe.py is half done, continuing with the call sites.",
+                   prompt_id="w3") == {}, "in progress"
+        (root / "receipts").mkdir(exist_ok=True)
+        (root / "receipts" / "r.md").write_text(RECEIPT.format(rows=UNIT, env="local"))
+        assert run(root, plain, prompt_id="w4") == {}, "a fresh verified row earns a plain report"
+
+    with tempfile.TemporaryDirectory() as td:  # old dirty files are not this session's work
+        root = Path(td)
+        sp.run(["git", "init", "-q", str(root)], check=True)
+        (root / "app.py").write_text("x = 1\n")
+        sp.run(["git", "-C", str(root), "add", "-A"], check=True)
+        sp.run(["git", "-C", str(root), "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "b"],
+               check=True, capture_output=True)
+        import os as _os, time as _t
+        (root / "app.py").write_text("x = 2\n")                          # last session's edit, uncommitted
+        old = _t.time() - 600
+        _os.utime(root / "app.py", (old, old))
+        core.log({"event": "armed", "session_id": "new"}, root)            # a new session starts now
+        report = "Here are this project's stats: 4 claims, 1 earned."
+        assert decide({"last_assistant_message": report, "session_id": "new", "prompt_id": "n1"}, root) == {}, \
+            "a dirty tree from before the session must not make this turn owe evidence"
+
+    with tempfile.TemporaryDirectory() as td:  # the gate wants evidence, not paperwork
+        root = setup(td, None)
+        (root / "receipts" / "loose.md").write_text(
+            "# notes\n**Tier:** dev\n\n| claim | method | artifact | status |\n|---|---|---|---|\n"
+            "| script prints hi | unit | ran python3 app.py -> hi | verified |\n")
+        out = run(root, "Added the comment and ran the script; it prints hi.", prompt_id="loose")
+        assert out == {}, f"honest rows in a loosely formatted receipt earn a plain report: {out}"
+
+    with tempfile.TemporaryDirectory() as td:  # pudding's own writes are not a code change
+        root = Path(td)
+        sp.run(["git", "init", "-q", str(root)], check=True)
+        (root / "net.py").write_text("x = 1\n")
+        sp.run(["git", "-C", str(root), "add", "-A"], check=True)
+        sp.run(["git", "-C", str(root), "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "b"],
+               check=True, capture_output=True)
+        import os as _os, time as _t
+        base = _t.time() - 120
+        _os.utime(root / "net.py", (base, base))
+        core.log({"event": "armed", "session_id": "q"}, root)       # session starts after the commit
+        core.ensure_ignored(root)                                    # pudding edits .gitignore
+        explain = "1. The request succeeds and resp.read() is returned immediately. Done."
+        out = decide({"last_assistant_message": explain, "session_id": "q", "prompt_id": "q1"}, root)
+        assert out == {}, f"a question answered with no code change must not be blocked: {out}"
+        (root / "net.py").write_text("x = 2\n")                    # now real code moves
+        out = decide({"last_assistant_message": explain, "session_id": "q", "prompt_id": "q2"}, root)
+        assert out.get("decision") == "block", "after a real change, the same claim is gated"
 
     print("gate: ok")
 

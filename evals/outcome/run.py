@@ -34,7 +34,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 PUDDING = HERE.parents[1]
 NAG = HERE / "nag"
-ARMS = ("vanilla", "prompt", "nag", "pudding")
+ARMS = ("vanilla", "prompt", "nag", "pudding", "pudding-v5")
 RESULT_FIELDS = ("result", "num_turns", "duration_ms", "duration_api_ms", "total_cost_usd",
                  "usage", "modelUsage", "session_id", "is_error", "subtype", "stop_reason")
 GIT_ID = ["-c", "user.name=eval", "-c", "user.email=eval@localhost", "-c", "core.hooksPath=/dev/null"]
@@ -57,6 +57,8 @@ def arm_args(arm, protocol_text):
         return ["--append-system-prompt", protocol_text]
     if arm == "nag":
         return ["--plugin-dir", str(NAG)]
+    if arm == "pudding-v5":  # the addendum arm: this checkout, which is the v5 commit
+        return ["--plugin-dir", str(PUDDING)]
     if arm == "pudding":
         return ["--plugin-dir", str(PUDDING)]
     return []

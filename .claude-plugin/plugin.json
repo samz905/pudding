@@ -1,7 +1,7 @@
 {
   "name": "pudding",
-  "version": "0.1.0",
-  "description": "Blocks a done-claim that has no matching evidence. The proof is in the pudding, not in the promise.",
+  "version": "1.0.0",
+  "description": "Your agent can't end a turn on 'it works' until the evidence is saved where you can open it. Checks the claim, not just the test command.",
   "author": {
     "name": "samz905",
     "url": "https://github.com/samz905"
@@ -9,5 +9,14 @@
   "homepage": "https://github.com/samz905/pudding",
   "repository": "https://github.com/samz905/pudding",
   "license": "MIT",
-  "keywords": ["verification", "evidence", "accountability", "testing", "hooks"]
+  "keywords": [
+    "verification",
+    "evidence",
+    "accountability",
+    "testing",
+    "hooks",
+    "claude-code",
+    "agents",
+    "receipts"
+  ]
 }

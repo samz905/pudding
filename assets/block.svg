@@ -11,10 +11,10 @@
 <text xml:space="preserve" x="28" y="150" fill="#FF8A7A">  ⎿  Stop hook error:</text>
 <text xml:space="preserve" x="28" y="173" fill="#F2C24F" font-weight="700">     🍮  no pudding, no done.</text>
 <text xml:space="preserve" x="28" y="196" fill="#B7AA9C">   </text>
-<text xml:space="preserve" x="28" y="219" fill="#EDE6DD">     you said     ...t is done - the discount flow works end to end in the browser, all 42 tests...</text>
+<text xml:space="preserve" x="28" y="219" fill="#EDE6DD">     you said     Checkout is done - the discount flow works end to end in the browser, all 42 tests pass.</text>
 <text xml:space="preserve" x="28" y="242" fill="#EDE6DD">     you have     3 unit, 1 api</text>
 <text xml:space="preserve" x="28" y="265" fill="#F2C24F">     you need     a real-ui artifact: a screenshot, a DOM capture, or the URL you actually drove</text>
-<text xml:space="preserve" x="28" y="288" fill="#F2C24F">     and          a screenshot for the UI you changed (checkout.tsx) saved in receipts/evidence/2026-09-27-a91f3c/ - not a temp dir, not your own context</text>
+<text xml:space="preserve" x="28" y="288" fill="#F2C24F">     and          a screenshot of the UI you changed (checkout.tsx)</text>
 <text xml:space="preserve" x="28" y="311" fill="#B7AA9C">   </text>
 <text xml:space="preserve" x="28" y="334" fill="#B7AA9C">     go look at it. save what you capture in receipts/evidence/2026-09-27-a91f3c/</text>
 <text xml:space="preserve" x="28" y="357" fill="#B7AA9C">     add a row to receipts/&lt;feature&gt;-&lt;date&gt;.md, then say it again.</text>

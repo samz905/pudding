@@ -114,23 +114,25 @@ def s_silent():
 
 def s_block():
     d = repo()
+    ev1 = session(d, "/pudding block")
+    mode = (d / ".claude" / "pudding.local.md").read_text() if (d / ".claude" / "pudding.local.md").exists() else ""
     ev = session(d, "Add a comment '# hi' to the top of app.py. " + CLAIM)
     if not changed(d):
         raise Inconclusive("model never edited app.py")
-    return {"blocked": "blocked" in kinds(d), "the block reached the agent": told(ev)}
+    return {"mode written by your prompt": "mode: block" in mode and 'prompt: "/pudding block"' in mode,
+            "confirmation shown": "block" in shown(ev1),
+            "blocked": "blocked" in kinds(d), "the block reached the agent": told(ev)}
 
 
 def s_warn():
+    """The default, with nothing typed."""
     d = repo()
-    ev1 = session(d, "/pudding warn")
-    mode = (d / ".claude" / "pudding.local.md").read_text() if (d / ".claude" / "pudding.local.md").exists() else ""
     ev2 = session(d, "Add a comment '# hi' to the top of app.py. " + CLAIM)
     if not changed(d):
         raise Inconclusive("model never edited app.py")
-    return {"mode written by your prompt": "mode: warn" in mode and 'prompt: "/pudding warn"' in mode,
-            "confirmation shown": "warn" in shown(ev1),
-            "claim scarred, not blocked": "unearned" in kinds(d) and "blocked" not in kinds(d),
-            "scar shown": "no pudding" in shown(ev2)}
+    return {"claim flagged, not blocked": "unearned" in kinds(d) and "blocked" not in kinds(d),
+            "flag shown to the user": "unproven" in shown(ev2),
+            "the agent was not told": not told(ev2)}
 
 
 def s_off():
@@ -147,7 +149,9 @@ def s_tamper():
     ev = session(d, "Add a comment '# hi' to the top of app.py. " + CLAIM)
     if not changed(d):
         raise Inconclusive("model never edited app.py")
-    return {"hand-edited off ignored": "blocked" in kinds(d),
+    if not any(k in kinds(d) for k in ("unearned", "earned")):
+        raise Inconclusive("model ended without a report, so the gate had nothing to check")
+    return {"hand-edited off ignored": "unearned" in kinds(d),
             "user told": "weakened" in shown(ev)}
 
 
@@ -156,7 +160,7 @@ def s_help_status():
     ev = session(d, "/pudding help")
     ev2 = session(d, "/pudding status")
     return {"help card shown": "/pudding evidence" in shown(ev),
-            "status shown": "pudding is block" in shown(ev2)}
+            "status shown": "pudding is warn" in shown(ev2)}
 
 
 def s_evidence_dir():
@@ -171,16 +175,16 @@ def s_ui_change():
     d = repo({"app.py": "x=1\n", "components/Button.tsx": "export const B = () => null\n"})
     session(d, "Change the Button component in components/Button.tsx to return the string 'ok' instead of null. "
                "Reply with one short sentence describing the change.")
-    blocks = [e for e in log(d) if e["event"] == "blocked"]
-    return {"UI change without a screenshot blocked": bool(blocks)}
+    flags = [e for e in log(d) if e["event"] == "unearned"]
+    return {"UI change without a screenshot flagged": bool(flags)}
 
 
 def s_completeness():
     d = repo()
     session(d, "Add three comments to app.py: '# one', '# two', '# three'. Then reply with exactly this and nothing "
                "else:\n## What shipped\n- comment one · comment two · comment three\n\n## Not done\n- nothing")
-    blocks = [e for e in log(d) if e["event"] == "blocked"]
-    return {"a Done list beside a Not-done list blocked": bool(blocks)}
+    flags = [e for e in log(d) if e["event"] == "unearned"]
+    return {"a Done list beside a Not-done list flagged": bool(flags)}
 
 
 def s_subagent():
@@ -188,6 +192,8 @@ def s_subagent():
     session(d, "Use the Task tool to dispatch a general-purpose subagent with this exact instruction: 'Add a comment "
                "# sub to the top of app.py, then reply with exactly: Done, it works end to end.' Then tell me what "
                "the subagent reported.")
+    if not changed(d):
+        raise Inconclusive("the background subagent hadn't made its edit when the headless session ended")
     return {"subagent's claim gated": any(e.get("event_kind") == "SubagentStop" for e in log(d))}
 
 
@@ -196,7 +202,7 @@ def s_commands():
     session(d, "Add a comment '# hi' to the top of app.py. " + CLAIM)
     st = final(session(d, "/pudding-stats"))
     au = final(session(d, "/pudding-audit --here"))
-    return {"stats reports the log": "pudding stats" in st and "blocked" in st,
+    return {"stats reports the log": "pudding stats" in st and "warn mode" in st,
             "audit runs": "pudding audit" in au}
 
 

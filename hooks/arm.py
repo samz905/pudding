@@ -50,15 +50,24 @@ A thousand unit rows never add up to one "works as a real user". Cannot reach so
 Record it as a row with status `blocked: <why>` and say so - a gap you name is honest, a
 gap you omit reads as covered.
 
-The Stop hook checks all of this. Unproven work does not end the turn.{extra}
+The Stop hook checks all of this. {consequence}{extra}
 """
 
 WELCOME = """\
 \U0001F36E pudding is armed ({mode}).
-   Your agent can't end a turn on "done" or "it works" without matching evidence.
+   {promise}
    receipts   {receipts:<34}  committed
    evidence   {evidence:<34}  gitignored{ignored}
-   /pudding help  \u00b7  /pudding warn  \u00b7  /pudding off"""
+   /pudding help  \u00b7  /pudding {other}  \u00b7  /pudding off"""
+
+CONSEQUENCE = {
+    "block": "Unproven work does not end the turn.",
+    "warn": "Unproven work is flagged to the user as unproven.",
+}
+PROMISE = {
+    "block": "Your agent can't end a turn on \"done\" or \"it works\" without matching evidence.",
+    "warn": "When your agent says \"done\" without matching evidence, you'll see it flagged.",
+}
 
 NUDGE = """
 
@@ -95,27 +104,29 @@ def main():
 
     out = {"hookSpecificOutput": {
         "hookEventName": event,
-        "additionalContext": PROTOCOL.format(mode=mode, extra=extra),
+        "additionalContext": PROTOCOL.format(mode=mode, consequence=CONSEQUENCE[mode], extra=extra),
     }}
     if first_run:
         # Shown once per project. Without it a fresh install is silent until the
         # first block, which reads as "it didn't install".
         note = ("\n   (added " + " and ".join(added) + " to .gitignore)") if added else ""
-        out["systemMessage"] = WELCOME.format(mode=mode, receipts="receipts/<feature>-<date>.md",
+        out["systemMessage"] = WELCOME.format(mode=mode, promise=PROMISE[mode],
+                                              other="block" if mode == "warn" else "warn",
+                                              receipts="receipts/<feature>-<date>.md",
                                               evidence=core.evidence_dir(root) + "/<date>-<run>/",
                                               ignored=note)
     core.emit(out)
 
 
 def demo():
-    w = WELCOME.format(mode="block", receipts="receipts/x.md", evidence="receipts/evidence/", ignored="")
-    assert "pudding is armed (block)" in w and "/pudding help" in w
-    assert "real-ui" in PROTOCOL and "{mode}" in PROTOCOL
-    out = PROTOCOL.format(mode="block", extra="")
-    assert "PUDDING ARMED - mode: block" in out and out.count("->") >= 9
-    assert "Changed code this session" in out
+    for mode, other in (("warn", "block"), ("block", "warn")):
+        w = WELCOME.format(mode=mode, promise=PROMISE[mode], other=other,
+                           receipts="receipts/x.md", evidence="receipts/evidence/", ignored="")
+        assert f"pudding is armed ({mode})" in w and f"/pudding {other}" in w and PROMISE[mode] in w
+        out = PROTOCOL.format(mode=mode, consequence=CONSEQUENCE[mode], extra="")
+        assert f"PUDDING ARMED - mode: {mode}" in out and out.count("->") >= 9
+        assert "Changed code this session" in out and CONSEQUENCE[mode] in out
     print("arm: ok")
-
 
 if __name__ == "__main__":
     demo() if "--demo" in sys.argv else main()

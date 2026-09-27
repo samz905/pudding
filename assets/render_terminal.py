@@ -7,6 +7,7 @@ The block text is produced by calling the gate itself on a throwaway repo, so th
 image can't drift from what the hook actually prints.
 """
 import html
+import os
 import subprocess
 import sys
 import tempfile
@@ -37,6 +38,7 @@ env: local
 
 
 def real_block():
+    os.environ["PUDDING_MODE"] = "block"  # the image shows block mode; the default is warn
     td = Path(tempfile.mkdtemp())
     subprocess.run(["git", "init", "-q", str(td)], check=True)
     (td / "receipts").mkdir()

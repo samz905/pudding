@@ -19,7 +19,7 @@ from pathlib import Path
 
 MODES = ("block", "warn", "off")
 DEFAULT_EVIDENCE = "receipts/evidence"
-DEFAULT_MODE = "block"
+DEFAULT_MODE = "warn"  # Study 2: the rules did the work; blocking doubled the time
 STRICTNESS = {"block": 2, "warn": 1, "off": 0}
 
 
@@ -252,11 +252,15 @@ def demo():
         # Tampering: a weakened mode with no authorizing prompt is ignored.
         state_path(root).write_text("---\nmode: off\n---\n", encoding="utf-8")
         mode, ok, _ = read_mode(root)
-        assert (mode, ok) == ("block", False), f"unauthorized off must revert, got {mode} {ok}"
+        assert (mode, ok) == ("warn", False), f"unauthorized off must revert, got {mode} {ok}"
 
         # Tightening without authorization is fine - you can always be stricter.
         state_path(root).write_text("---\nmode: block\n---\n", encoding="utf-8")
         assert read_mode(root)[:2] == ("block", True)
+        # ...and an unauthorized warn is the default, so it isn't a weakening.
+        state_path(root).write_text("---\nmode: warn\n---\n", encoding="utf-8")
+        assert read_mode(root)[:2] == ("warn", True)
+        state_path(root).write_text("---\nmode: block\n---\n", encoding="utf-8")
 
         assert evidence_dir(root) == DEFAULT_EVIDENCE
         write_setting("evidence", "docs/proof", "/pudding evidence docs/proof", "s1", root)

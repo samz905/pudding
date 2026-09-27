@@ -21,8 +21,8 @@ HELP = """\
 \U0001F36E pudding - a done-claim has to carry matching evidence
 
   /pudding status            current mode, and which of your prompts set it
-  /pudding block             no matching evidence, no end of turn   (default)
-  /pudding warn              claims go through, unearned ones get flagged
+  /pudding warn              claims go through, unearned ones get flagged   (default)
+  /pudding block             no matching evidence, no end of turn
   /pudding off               disarmed for this project
   /pudding evidence <dir>    where screenshots must be saved
   /pudding statusline        show earned/blocked counts in your statusline
@@ -104,7 +104,7 @@ def main():
             "additionalContext": (
                 f"[pudding] The user set pudding to {want}. {BLURB[want]} "
                 "Acknowledge in one line. You cannot set this yourself - only their typed "
-                "/pudding command writes it, and weakening the file any other way reverts to block."
+                "/pudding command writes it, and weakening the file any other way reverts to your default."
             ),
         },
     })

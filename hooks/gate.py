@@ -58,7 +58,8 @@ def session_start(session_id, root):
 IN_PROGRESS = re.compile(
     r"\b(?:still working|work in progress|\bWIP\b|in progress|next,? I'll|I'll (?:continue|keep going|finish|"
     r"pick (?:this|it) up)|continuing (?:with|on)|not done yet|not finished|halfway|part \d+ of \d+|"
-    r"(?:first|next) (?:step|pass|half)|waiting (?:on|for) (?:you|your))\b", re.I)
+    r"(?:first|next) (?:step|pass|half)|waiting (?:on|for) (?:you|your)|(?:working|running) in the background|"
+    r"I'll (?:get|be) notified|I'll get a notification)\b", re.I)
 
 
 def is_report(message):
@@ -354,7 +355,7 @@ def excerpt(sentence, phrase, width=90):
     return ("..." if start else "") + sentence[start:end].strip() + ("..." if end < len(sentence) else "")
 
 
-def render(unmet, receipt, rows, root, run_dir):
+def render(unmet, receipt, rows, root, run_dir, warn=False):
     """One block, read by both the human and the model.
 
     Measured in a real terminal: on a block, `reason` renders as "Stop hook error"
@@ -366,6 +367,7 @@ def render(unmet, receipt, rows, root, run_dir):
     c = unmet[0]
     said = excerpt(c.sentence, c.phrase) if c.sentence else c.phrase
     lines = [
+        "\U0001F36E  unproven. the turn ended anyway (warn mode)." if warn else
         "\U0001F36E  no pudding, no done.",
         "",
         f"  you said     {said}",
@@ -374,6 +376,8 @@ def render(unmet, receipt, rows, root, run_dir):
     ]
     for extra in unmet[1:4]:
         lines.append(f"  and          {extra.family.hint}")
+    if warn:  # only the human reads this one: the facts, not instructions to the agent
+        return "\n".join(lines + ["", "  /pudding block holds the turn until the proof exists."])
     lines += [
         "",
         f"  go look at it. save what you capture in {run_dir}/",
@@ -463,14 +467,18 @@ def decide(data, root):
         core.log({"event": "earned", **base}, root)
         return {}
 
+    tamper = None if authorized else (
+        "\U0001F36E pudding: the mode file was weakened without a /pudding command, "
+        f"so the gate reverted to {mode}.")
+    if mode == "warn":
+        core.log({"event": "unearned", **base}, root)
+        text = render(unmet, receipt, rows, root, None, warn=True)
+        return {"systemMessage": text + ("\n" + tamper if tamper else "")}
+
     text = render(unmet, receipt, rows, root, core.run_folder(prompt_id, root))
     if receipt and findings:
         text += "\n\n  " + receipt.name + " doesn't hold up yet:\n" + \
                 "\n".join(f"   - {f}" for f in findings[:4])
-
-    if mode == "warn":
-        core.log({"event": "unearned", **base}, root)
-        return {"systemMessage": text}
 
     # The budget applies only to a turn that is still unearned. Checking it first -
     # the first version did - logged an agent as having escaped on the very stop where
@@ -488,9 +496,8 @@ def decide(data, root):
     # AND reaches the model; additionalContext reaches only the model. So the human
     # gets the short mascot block and the model gets the full instructions.
     out = {"decision": "block", "reason": text}
-    if not authorized:
-        out["systemMessage"] = ("\U0001F36E pudding: the mode file was weakened without a /pudding "
-                                "command, so the gate reverted to block.")
+    if tamper:
+        out["systemMessage"] = tamper
     return out
 
 

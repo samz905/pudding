@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Self-check for the pudding gate. Run: python3 hooks/test_gate.py"""
+import os
 import sys
 import time
 from pathlib import Path
@@ -17,6 +18,9 @@ def full(out):
 
 
 def main():
+    # Out of the box pudding warns. Most checks below exercise the block path, so they
+    # run with block as the user default; the warn default is checked at the end.
+    os.environ["PUDDING_MODE"] = "block"
     # a real-ui row naming a file that does not exist is a promise, not proof
     import tempfile as _tf
     with _tf.TemporaryDirectory() as _td:
@@ -104,7 +108,7 @@ env: {env}
         root = setup(td, UNIT)
         core.write_mode("warn", "/pudding warn", "s1", root)
         out = run(root, "It works end to end in the browser.")
-        assert "decision" not in out and "no pudding" in out["systemMessage"], out
+        assert "decision" not in out and "unproven" in out["systemMessage"], out
         core.write_mode("off", "/pudding off", "s1", root)
         assert run(root, "It works end to end in the browser.") == {}
 
@@ -134,7 +138,6 @@ env: {env}
 
         # Pin the receipt's mtime well into the past instead of racing git's 1-second
         # commit resolution - this test flaked roughly one run in five on timing alone.
-        import os
         old = time.time() - 60
         os.utime(root / "receipts" / "r.md", (old, old))
         (root / "src.py").write_text("x = 2\n")        # real code moves on; the receipt does not
@@ -279,6 +282,22 @@ env: {env}
         (root / "net.py").write_text("x = 2\n")                    # now real code moves
         out = decide({"last_assistant_message": explain, "session_id": "q", "prompt_id": "q2"}, root)
         assert out.get("decision") == "block", "after a real change, the same claim is gated"
+
+    with tempfile.TemporaryDirectory() as td:  # the shipped default: warn, facts only
+        os.environ.pop("PUDDING_MODE")
+        root = setup(td, UNIT)
+        out = run(root, "It works end to end in the browser.")
+        assert "decision" not in out, f"default must not block: {out}"
+        msg = out["systemMessage"]
+        assert "warn mode" in msg and "you need" in msg and "go look" not in msg, msg
+        core.state_path(root).parent.mkdir(parents=True, exist_ok=True)
+        core.state_path(root).write_text("---\nmode: off\n---\n")  # tampering still reported
+        assert "reverted to warn" in run(root, "It works end to end in the browser.")["systemMessage"]
+
+    from gate import is_report
+    assert not is_report("Agent dispatched. It's working in the background now - I'll get a notification "
+                         "when it completes."), "a dispatched background agent is not a hand-back"
+    assert is_report("Done. The comment is added.")
 
     print("gate: ok")
 

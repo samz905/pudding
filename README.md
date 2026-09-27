@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/pudding.svg" width="190" alt="pudding: a crème caramel with half-lidded eyes, holding up a receipt">
+  <img src="assets/pudding.svg" width="190" alt="pudding: a crème caramel with half-lidded eyes, unimpressed">
 </p>
 
 <h1 align="center">pudding</h1>
@@ -7,8 +7,8 @@
 <p align="center"><b>The proof is in the pudding, not in the promise.</b></p>
 
 <p align="center">
-A Claude Code plugin that won't let your agent end a turn on <i>"it works"</i><br>
-until the evidence is saved somewhere you can open it.
+A Claude Code plugin that makes your agent back <i>"it works"</i> with evidence<br>
+saved somewhere you can open it, and tells you when it didn't.
 </p>
 
 <p align="center">
@@ -23,9 +23,10 @@ until the evidence is saved somewhere you can open it.
 >
 > <sub>Counted from my own Claude Code transcripts, April to September 2026, and estimated from a blind-labeled sample ([method](evals/claims/results/real-world.md)). Run <code>/pudding-audit</code> to count yours; it reads the transcripts already on your machine and prints numbers, nothing else.</sub>
 
-**36% → 6%.** How often a coding agent told the user a broken task was done, without pudding and with it, in a [pre-registered study](evals/outcome2/REPORT.md) of 108 runs. The honest footnote is below: most of that came from pudding's rules, not its blocking.
+**36% → 6%.** How often a coding agent told the user a broken task was done, without pudding and with it, in a [pre-registered study](evals/outcome2/REPORT.md) of 108 runs. The honest footnote is below: most of that came from pudding's rules, not its blocking, which is why it warns by default.
 
 <p align="center"><img src="assets/block.svg" alt="pudding blocking a turn: you said it works end to end, you have 3 unit tests and 1 api check, you need a real-ui artifact"></p>
+<p align="center"><sub>With <code>/pudding block</code>. The default, <code>warn</code>, shows you the same three lines and lets the turn end.</sub></p>
 
 ## Install
 
@@ -37,11 +38,11 @@ until the evidence is saved somewhere you can open it.
 Restart Claude Code. No account, no key, no config. It needs `python3` on your PATH, which you already have if you have git on macOS or any Linux. (Windows: untested.) The first session in each project tells you, once:
 
 ```
-🍮 pudding is armed (block).
-   Your agent can't end a turn on "done" or "it works" without matching evidence.
+🍮 pudding is armed (warn).
+   When your agent says "done" without matching evidence, you'll see it flagged.
    receipts   receipts/<feature>-<date>.md        committed
    evidence   receipts/evidence/<date>-<run>/     gitignored
-   /pudding help  ·  /pudding warn  ·  /pudding off
+   /pudding help  ·  /pudding block  ·  /pudding off
 ```
 
 After that it says nothing until it has something to say.
@@ -81,7 +82,7 @@ And the kind of evidence has to match the kind of claim:
 
 A thousand unit tests never add up to one "works as a real user".
 
-If the evidence isn't there, the turn doesn't end. The agent goes and gets it, or writes down honestly that it couldn't, and tells you. Either way the last word you read is true.
+If the evidence isn't there, pudding says so under the claim: what was said, what's on file, what's missing. In `block` mode the turn doesn't end either. The agent goes and gets it, or writes down honestly that it couldn't, and tells you, so the last word you read is true.
 
 ## Why not just gate on the test suite
 
@@ -128,22 +129,22 @@ So pudding doesn't bet on the detector. After real work, rule 1 applies **howeve
 
 Pudding cut false success from 36% to 6%, a 31-point drop (95% CI 8 to 56 points, bootstrapped over tasks). The honest part is that the same rules as a plain system prompt did just as well. On these tasks the rules did the work, and the Stop hook added no measurable benefit on top. What pudding adds is that the rules are there in every session without anyone remembering to put them there: the skill version sat unused for a month. The hook is insurance for when an agent ignores its instructions, and this study didn't catch that happening. [Full report](evals/outcome2/REPORT.md).
 
-**It costs time.** Pudding makes the agent go and look, and looking isn't free: on small tasks the median run took minutes rather than seconds, mostly spent standing up a browser to take the screenshot it now owes you. In Study 2 the median task took 64 seconds with no help, 190 seconds with the rules alone, and 416 seconds with the hook. If a task doesn't deserve that, `/pudding warn` keeps the rules and drops the blocking.
+**It costs time.** Pudding makes the agent go and look, and looking isn't free: on small tasks the median run took minutes rather than seconds, mostly spent standing up a browser to take the screenshot it now owes you. In Study 2 the median task took 64 seconds with no help, 190 seconds with the rules alone, and 416 seconds with the hook. That's why the default is `warn`: the rules in every session and unproven claims flagged to you, without the blocking that doubled the time. `/pudding block` is there for when you want the turn held until the proof exists.
 
 ## Commands
 
 | | |
 |---|---|
 | `/pudding status` | the current mode, and which of your prompts set it |
-| `/pudding block` | no matching evidence, no end of turn. **The default.** |
-| `/pudding warn` | claims go through; unearned ones get flagged on screen and logged |
+| `/pudding warn` | claims go through; unearned ones get flagged on screen and logged. **The default.** |
+| `/pudding block` | no matching evidence, no end of turn |
 | `/pudding off` | disarmed for this project |
 | `/pudding evidence <dir>` | where screenshots must be saved |
 | `/pudding statusline` | adds `🍮 12✓ 3✗` to your statusline, if you don't already have one |
 | `/pudding-stats` | how many of this project's claims had evidence |
 | `/pudding-audit` | count the done-claims across your past sessions |
 
-Only your typing changes the mode. The hook reads your prompt before your agent does, and if the settings file changes any other way, pudding reverts to `block` and tells you. Your agent can't turn off its own invigilator.
+Only your typing changes the mode. The hook reads your prompt before your agent does, and if the settings file changes any other way, pudding reverts to your default and tells you. Your agent can't turn off its own invigilator.
 
 ## What it writes
 
@@ -164,11 +165,11 @@ It can write a row. The row has to point at a file inside the evidence folder, t
 **Isn't this just a regex?**
 Yes, on purpose. The research on exactly this problem ([arXiv:2606.09863](https://arxiv.org/abs/2606.09863)) found no LLM judge beat AUROC 0.65 at spotting a false "done" from a transcript, while the paper's own small lexical detector reached 0.83 to 0.95. A deterministic detector is free, instant, auditable, and every rule is readable in [`hooks/claims.py`](hooks/claims.py). Its accuracy is measured above, including the version that wasn't good enough.
 
-**Won't it block me all day?**
-It stays silent unless this session changed code and the agent is reporting back, or it made a claim. Questions, plans, explanations, and turns that say they're still going pass straight through. Changes from before the session don't count. It checks evidence, not paperwork: a messy receipt with honest rows passes. On the benchmark's control task, a question that asked for no change, the current rules blocked 0 of 3 runs. It blocks at most three times per prompt; after that the turn goes through and is logged as `escaped`, so the log can't pretend enforcement held. `/pudding warn` if you'd rather be told than stopped.
+**Won't it get in my way?**
+Out of the box it never stops a turn; it only flags. In either mode it stays silent unless this session changed code and the agent is reporting back, or it made a claim. Questions, plans, explanations, and turns that say they're still going pass straight through. Changes from before the session don't count. It checks evidence, not paperwork: a messy receipt with honest rows passes. On the benchmark's control task, a question that asked for no change, the current rules blocked 0 of 3 runs. In `block` mode, which you opt into, it blocks at most three times per prompt; after that the turn goes through and is logged as `escaped`, so the log can't pretend enforcement held.
 
 **What does it cost?**
-Pudding itself makes no API calls: a regex pass and a `git status` when a turn ends. The real cost is your agent's time. It has to go and look, and looking takes longer than saying so; the benchmark above puts numbers on that. If a task doesn't deserve it, `/pudding warn`.
+Pudding itself makes no API calls: a regex pass and a `git status` when a turn ends. The real cost is your agent's time. It has to go and look, and looking takes longer than saying so; the benchmark above puts numbers on that, and it's why the default warns instead of blocking.
 
 **Does it stop the claim from appearing?**
 No. Claude Code shows the message before it runs the Stop hook, so you'll see the claim and then pudding's reply under it. What pudding guarantees is that an unproven "done" isn't the last word.

@@ -1,0 +1,5 @@
+{
+  "name": "nag",
+  "version": "0.0.1",
+  "description": "Benchmark control arm: blocks the first stop of each turn with a generic 'double-check your work' and nothing else. No claim detection, no receipts, no evidence rules."
+}

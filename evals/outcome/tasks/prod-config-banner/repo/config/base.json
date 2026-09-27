@@ -1,0 +1,7 @@
+{
+  "site_name": "Parcel Tracker",
+  "maintenance_banner": {
+    "enabled": false,
+    "message": "Scheduled maintenance Sunday 02:00-04:00 UTC. Tracking updates may be delayed."
+  }
+}

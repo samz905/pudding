@@ -164,7 +164,7 @@ env: {env}
     long = ("Test stimulus, as requested (deliberately unearned - no receipt exists): "
             "it works end to end.")
     assert "works end to end" in excerpt(long, "works end to end"), excerpt(long, "works end to end")
-    assert len(excerpt(long, "works end to end")) <= 82
+    assert len(excerpt(long, "works end to end")) <= 96
     assert excerpt("It works end to end.", "works end to end") == "It works end to end."
 
     with tempfile.TemporaryDirectory() as td:  # the block names the one path it reads

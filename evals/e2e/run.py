@@ -41,7 +41,7 @@ def session(d, prompt, timeout=300):
     cmd = ["claude", "-p", prompt, "--model", MODEL, "--plugin-dir", str(ROOT),
            "--dangerously-skip-permissions", "--setting-sources", "project,local",
            "--output-format", "stream-json", "--verbose"]
-    out = subprocess.run(cmd, cwd=d, capture_output=True, text=True, timeout=timeout)
+    out = subprocess.run(cmd, cwd=d, capture_output=True, text=True, timeout=timeout, stdin=subprocess.DEVNULL)
     events = []
     for line in out.stdout.splitlines():
         try:
@@ -130,6 +130,8 @@ def s_block():
     mode = (d / ".claude" / "pudding.local.md").read_text() if (d / ".claude" / "pudding.local.md").exists() else ""
     ev = session(d, "Add a comment '# hi' to the top of app.py. " + CLAIM)
     needs_stimulus(d, ev)
+    if "earned" in kinds(d) and "blocked" not in kinds(d):
+        raise Inconclusive("the agent proved it before claiming, so there was nothing to block")
     return {"mode written by your prompt": "mode: block" in mode and 'prompt: "/pudding block"' in mode,
             "confirmation shown": "block" in shown(ev1),
             "blocked": "blocked" in kinds(d), "the block reached the agent": told(ev)}

@@ -94,6 +94,29 @@ STOP = {"the", "and", "for", "with", "from", "into", "that", "this", "when", "th
         "works", "work", "done", "verified", "test", "tests", "page", "user", "new"}
 
 
+MAGIC = {".png": (b"\x89PNG",), ".jpg": (b"\xff\xd8\xff",), ".jpeg": (b"\xff\xd8\xff",),
+         ".gif": (b"GIF87a", b"GIF89a"), ".webp": (b"RIFF",)}
+
+
+def looks_real(path):
+    """An image has to be an image. `touch shot.png` is the cheapest possible fake,
+    and it should not be the one that works.
+
+    ponytail: header bytes only. A real screenshot of the wrong screen still passes;
+    that one is caught by the person opening the file, which is the point of saving it.
+    """
+    try:
+        if path.stat().st_size == 0:
+            return False
+        sigs = MAGIC.get(path.suffix.lower())
+        if not sigs:
+            return True
+        head = path.open("rb").read(12)
+        return any(head.startswith(sig) for sig in sigs)
+    except OSError:
+        return False
+
+
 def artifact_is_real(artifact, root):
     """A real-ui row must point at a file the user can open, where they look for it.
 
@@ -112,7 +135,7 @@ def artifact_is_real(artifact, root):
             full = (root / cand.lstrip("./")).resolve()
         except OSError:
             continue
-        if full.exists() and ev in full.parents:
+        if full.exists() and ev in full.parents and looks_real(full):
             return True
     return False
 
@@ -179,9 +202,11 @@ def newest_source_commit(root, floor):
     """
     newest, ts = 0.0, 0.0
     try:
+        # Not --since: git's date parser intermittently reads "@0" as "now", so with a
+        # clean tree (floor 0) it dropped every commit older than the current second.
+        # Recent history, filtered here, is exact.
         out = subprocess.run(
-            ["git", "-C", str(root), "log", "--since=@%d" % int(floor or 0),
-             "--format=%ct", "--name-only"],
+            ["git", "-C", str(root), "log", "-n", "200", "--format=%ct", "--name-only"],
             capture_output=True, text=True, timeout=5)
         for line in out.stdout.splitlines():
             line = line.strip()
@@ -189,7 +214,7 @@ def newest_source_commit(root, floor):
                 continue
             if line.isdigit():
                 ts = float(line)
-            elif not (line.startswith(("receipts/", ".claude/")) or VOLATILE.search(line)):
+            elif ts >= (floor or 0) and not (line.startswith(("receipts/", ".claude/")) or VOLATILE.search(line)):
                 # ponytail: %ct truncates to the second, so a receipt written in the
                 # same second as a commit reads as fresh. Rounding up fixes that and
                 # breaks the common case (write code, commit, write receipt, same
@@ -253,56 +278,35 @@ def excerpt(sentence, phrase, width=76):
     return ("..." if start else "") + sentence[start:end].strip() + ("..." if end < len(sentence) else "")
 
 
-def render(unmet, receipt, rows, root):
-    """Who sees what, measured in a real terminal rather than read off the schema:
+def render(unmet, receipt, rows, root, run_dir):
+    """One block, read by both the human and the model.
 
-    warn   -> systemMessage renders as "Stop says: ...". stopReason never appears.
-    block  -> reason renders as "Stop hook error: ..." AND goes to the model.
-              stopReason never appeared either.
-
-    So `reason` is the only channel that reaches a human on the block path, and it
-    leads with the mascot for that reason; the machine instructions follow it.
+    Measured in a real terminal: on a block, `reason` renders as "Stop hook error"
+    and hookSpecificOutput.additionalContext renders as "Stop hook feedback" - there
+    is no model-only channel. Two blocks meant ~25 lines of instructions and absolute
+    temp paths on the user's screen. So: one short block, relative paths, written so
+    the human understands it and the model can act on it.
     """
     c = unmet[0]
-    said = excerpt(c.sentence, c.phrase)
-    have = have_summary(rows)
-    where = str(receipt) if receipt else "none written this session"
-
-    stop_reason = (
-        "\n\U0001F36E  no pudding, no done.\n\n"
-        f"  you said     {said}\n"
-        f"  you have     {have}\n"
-        f"  you need     {c.family.hint}\n\n"
-        "  go look at it. then come back.\n"
-        "  (or write it down honestly:\n"
-        f"   | {c.phrase} | - | - | blocked: <why> |)\n"
-    )
-
+    said = excerpt(c.sentence, c.phrase) if c.sentence else c.phrase
     lines = [
-        stop_reason.rstrip(),
+        "\U0001F36E  no pudding, no done.",
         "",
-        f"receipt read: {where}",
-        f"receipts are read from exactly one place: {root / 'receipts'}/",
-        f"real-ui artifacts must live under: {root / core.evidence_dir(root)}/",
-        "a receipts/ folder anywhere else in the tree is not read.",
-        "",
+        f"  you said     {said}",
+        f"  you have     {have_summary(rows)}" + ("" if receipt else "  (no receipt this session)"),
+        f"  you need     {c.family.hint}",
     ]
-    for c in unmet:
-        lines += [f'claim   "{c.sentence.strip()}"',
-                  f"family  {c.family.name}",
-                  f"needs   {c.family.hint}",
-                  ""]
+    for extra in unmet[1:4]:
+        lines.append(f"  and          {extra.family.hint}")
     lines += [
-        "Do one of these, then say it again:",
-        "  1. Go get the evidence, drive it the way the user does, and add the row.",
-        "  2. If you cannot reach it, record that honestly as a row with",
-        "     status `blocked: <why - user decision needed>` and say so in your report.",
-        "  3. If the user already waived it, record `waived: <who/when>`.",
         "",
-        "Do not restate the claim without doing one of those. A softer sentence with",
-        "the same unearned meaning is the failure this exists to catch.",
+        f"  go look at it. save what you capture in {run_dir}/",
+        "  add a row to receipts/<feature>-<date>.md, then say it again.",
+        "  can't reach it? write it down honestly and say so:",
+        f"   | {c.phrase or c.family.name} | - | - | blocked: <why> |",
+        "  (a softer sentence with the same meaning is not a way out.)",
     ]
-    return stop_reason, "\n".join(lines)
+    return "\n".join(lines)
 
 
 def decide(data, root):
@@ -381,20 +385,23 @@ def decide(data, root):
         core.log({"event": "earned", **base}, root)
         return {}
 
-    stop_reason, reason = render(unmet, receipt, rows, root)
+    text = render(unmet, receipt, rows, root, core.run_folder(prompt_id, root))
     if receipt and findings:
-        reason += "\n\nThe receipt is also invalid:\n" + "\n".join(f"  - {f}" for f in findings)
+        text += "\n\n  " + receipt.name + " also fails the receipt rules:\n" + \
+                "\n".join(f"   - {f}" for f in findings[:4])
 
     if mode == "warn":
         core.log({"event": "unearned", **base}, root)
-        return {"systemMessage": stop_reason}
+        return {"systemMessage": text}
 
     core.log({"event": "blocked", **base}, root)
-    out = {"decision": "block", "reason": reason, "systemMessage": stop_reason,
-           "stopReason": "a done-claim with no matching evidence"}
+    # Measured in a real terminal: `reason` renders to the human as "Stop hook error"
+    # AND reaches the model; additionalContext reaches only the model. So the human
+    # gets the short mascot block and the model gets the full instructions.
+    out = {"decision": "block", "reason": text}
     if not authorized:
-        out["systemMessage"] += ("\n  note: the mode file was weakened without a /pudding "
-                                 "command, so the gate reverted to block.")
+        out["systemMessage"] = ("\U0001F36E pudding: the mode file was weakened without a /pudding "
+                                "command, so the gate reverted to block.")
     return out
 
 

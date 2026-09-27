@@ -29,7 +29,9 @@ FAMILIES = [
         r"|(?:works?|working|tested|verified|checked|confirmed|tried|renders?|shows? up|loads?)\b.{0,30}\bin the "
         r"(?:app|browser|UI)\b"
         r"|on your (?:real|actual) |signed up (?:with|as) a|installing this for the first time"
-        r"|the way a (?:real |new )?user would|as a user would",
+        r"|the way a (?:real |new )?user would|as a user would|as a (?:logged|signed).in user"
+        r"|in the (?:actual|real|live) (?:dashboard|app|site|page|editor|browser)|end.to.end\s*(?:[\u2014\u2013,:-]|and\b)"
+        r"|(?:stranger|new user|first.time user)\b.{0,60}\bwould get through",
         {"real-ui"}, False, False,
         "a real-ui artifact: a screenshot, a DOM capture, or the URL you actually drove",
     ),
@@ -37,7 +39,7 @@ FAMILIES = [
         "design-match",
         r"match(?:es|ed)? the (?:design|mock(?:up)?|reference|comp|figma|spec(?: doc)?)|against the "
         r"(?:figma|mock(?:up)?|design|spec)|pixel by pixel|pixel.(?:perfect|honest)|design fidelity|likeness"
-        r"|confirmed against the spec",
+        r"|confirmed against the spec|match(?:es|ed)? the (?:\w+ )?(?:contract|schema)\b|byte for byte",
         {"real-ui"}, True, False,
         "a real-ui screenshot paired against the reference (before/after or shot-vs-design)",
     ),
@@ -48,7 +50,9 @@ FAMILIES = [
         r"|on (?:the )?(?:staging|preview|production) (?:url|link|site)|released to|published to (?:npm|pypi)"
         r"|\bv\d+\.\d+(?:\.\d+)? is (?:out|live|published)|running on the new"
         r"|serving (?:live|production|real) traffic|every\b.{0,40}\b(?:pod|instance|server|node|host)s? (?:is|are) "
-        r"(?:now )?running",
+        r"(?:now )?running|\b(?:is|it's|are) (?:fully |now )live\b|(?:prod|production|staging) (?:is )?(?:now )?running"
+        r"|\brunning now\b|out the door|^\s*(?:deployed|pushed|shipped|released|rolled)\b.{0,80}\b(?:to|out to|into) "
+        r"(?:prod(?:uction)?|staging|the (?:\w+ )?server|the fleet|main)",
         {"real-ui"}, False, True,
         "a real-ui artifact captured against the DEPLOYED url, with env naming it - localhost is not the deploy",
     ),
@@ -56,7 +60,9 @@ FAMILIES = [
         "metric",
         r"the (?:count|number|metric|total|figure|rate|tile|counter|badge)s? (?:is|are|now) (?:right|correct|"
         r"accurate)|counts? (?:correctly|match)|numbers? (?:match|line up)|now (?:reads|shows|reports|displays) "
-        r"[\d,.$%]|(?:lines up|match(?:es)?) exactly|matches reality|cross.?checked\b.{0,80}\b(?:match|line up)",
+        r"[\d,.$%]|(?:lines up|match(?:es)?) exactly|matches reality|cross.?checked\b.{0,80}\b(?:match|line up)"
+        r"|now correctly (?:prints|shows|reads|reports|displays|returns)|(?:totals?|counts?|numbers?) agree"
+        r"|agrees? to the cent|match(?:es)? the (?:raw|actual|source|real)\b|tracked the actual",
         {"db", "real-ui"}, False, False,
         "a db read or a real-ui capture showing the SURFACED value move",
     ),
@@ -64,7 +70,9 @@ FAMILIES = [
         "persisted",
         r"(?:row|record|event|entry|document)s? (?:is |are |get |gets )?(?:written|recorded|saved|created|"
         r"persisted|lands?)\b|persist(?:s|ing)? correctly|lands? in the (?:db|database|\w+ table|table)"
-        r"|(?:is|are) (?:now )?persist(?:ed|ing)|now (?:holds|has|contains) (?:all )?[\d,]+ (?:rows|records)",
+        r"|(?:is|are) (?:now )?persist(?:ed|ing)|now (?:holds|has|contains) (?:all )?[\d,]+ (?:rows|records)"
+        r"|(?:durably )?written (?:back )?to (?:the )?(?:\w+ )?(?:table|db|database|postgres|disk|outbox)"
+        r"|(?:rows|records|events) (?:now have|showed up|appear)",
         {"db"}, False, False,
         "a db artifact: the query and the row it returned",
     ),
@@ -74,7 +82,7 @@ FAMILIES = [
         r"(?:now )?(?:fires|is sent|goes out|is delivered|arrives|lands)|fires (?:correctly|on every)|now fires"
         r"|(?:actually|now) fires|hit our endpoint|posts to (?:the )?#|triggers? on every"
         r"|(?:message|ping|notification|email|alert|event)s? (?:showed up|landed|lands?|arrived|appeared) in"
-        r"|watched (?:the|it|them)\b.{0,30}\b(?:land|arrive|show up|come through)",
+        r"|watched (?:the|it|them)\b.{0,30}\b(?:land|arrive|show up|come through)|\bshowed up in\b",
         {"wire"}, False, False,
         "a wire artifact: the captured request, webhook, or queue payload",
     ),
@@ -86,7 +94,9 @@ FAMILIES = [
         r"|\b(?:zero|no more) (?:duplicate|errors|failures|crashes)|repro(?:duction)?(?: script)?\b.{0,60}"
         r"\b(?:now|and it|zero|no longer)|isn't (?:there|happening) any ?more|stay(?:s|ed) flat"
         r"|completed cleanly|(?:ran|completed|finished) clean(?:ly)? (?:each|every) time|no (?:more )?hangs\b"
-        r"|(?:hasn't|has not) (?:recurred|come back|happened (?:again|since))",
+        r"|(?:hasn't|has not) (?:recurred|come back|happened (?:again|since))"
+        r"|(?:didn't|did not|couldn't) reproduce|treating (?:this|it) as (?:resolved|done|fixed|closed)"
+        r"|(?:nothing|no longer|doesn't|isn't|aren't)\b.{0,40}\bany ?more\b|\bno more \w+",
         None, False, False,
         "the reproduction re-run and now failing to reproduce - a fix with no repro row is a guess",
     ),
@@ -95,7 +105,8 @@ FAMILIES = [
         r"\d+(?:\.\d+)?\s*(?:x|%|times) (?:faster|smaller|less)|(?:is |much |now )faster\b|(?:performance|"
         r"latency|load time|p9\d) (?:improved|is better|dropped|down)|uses less (?:memory|cpu|ram)"
         r"|takes? [\d.]+\s*\w* (?:now )?instead of|(?:down|dropped) (?:from|to) [\d.]+\s*(?:kb|mb|ms|s\b|seconds|"
-        r"minutes)|now takes [\d.]+|\btook [\dhms:.]+\b.{0,60}\b(?:lands at|now takes|this one|now) [\dhms:.]+",
+        r"minutes)|now takes [\d.]+|\btook [\dhms:.]+\b.{0,60}\b(?:lands at|now takes|this one|now) [\dhms:.]+"
+        r"|went from [\d.,]+\s*\w* to [\d.,]+|used to (?:take|run)\b.{0,50}\bnow (?:finishes|takes|runs)",
         None, True, False,
         "a before -> after measurement pair, not a single number",
     ),
@@ -113,7 +124,8 @@ FAMILIES = [
         r"(?:doesn't|does not|won't|didn't) break|backwards? compatible|no regressions?|nothing (?:downstream )?"
         r"broke|no breaking changes|(?:all )?existing (?:consumers|clients|callers|users) still"
         r"|still (?:parse|pass|work)s?\b.{0,40}\b(?:old|existing|v1)|exactly as before|byte.identical"
-        r"|identical output|has(?:n't| not)? anything to change|nobody\b.{0,50}\bhas anything to change",
+        r"|identical output|has(?:n't| not)? anything to change|nobody\b.{0,50}\bhas anything to change"
+        r"|still (?:parse|pass|work|run)s?\b|(?:no one|nobody) (?:gets|is) (?:logged out|affected|broken)",
         None, False, False,
         "the prior consumer still running",
     ),
@@ -127,7 +139,9 @@ FAMILIES = [
         r"shipped)|everything(?:'s| else)? (?:is |are )?(?:done|built|verified|addressed|implemented|shipped|in)\b"
         r"|the rest (?:are|is) (?:done|built|verified|addressed)|(?:all|every) (?:the )?feedback (?:is|are|has "
         r"been) (?:done|addressed|implemented|verified)|nothing left on (?:that|the|your) list"
-        r"|went through (?:the whole|the full|the entire|every)\b.{0,60}\b(?:list|checklist|ticket)",
+        r"|went through (?:the whole|the full|the entire|every)\b.{0,60}\b(?:list|checklist|ticket)"
+        r"|went through the (?:two|three|four|five|six|\d+) (?:\w+ ){0,2}(?:items?|queries|issues|bugs|comments|"
+        r"tickets|points|flags)",
         None, False, False,
         "one verified row per item you are calling done - not one row standing in for the set",
     ),
@@ -143,6 +157,8 @@ FAMILIES = [
         r"|\ball \d+ \w+ (?:pass|match|succeed)|\beverything'?s in\b|\bnothing left\b"
         r"|\b(?:tracked|worked|behaved|rendered|loaded|synced|saved|formatted) correctly\b"
         r"|\b(?:core|whole|main|happy) (?:flow|path) (?:is|was) (?:solid|clean|good)\b|\bthey line up\b"
+        r"|\bholds? up\b|calling (?:this|it)(?: one)? (?:closed|done|finished)|\bas expected\b"
+        r"|\b\w+ed correctly\b|\b(?:is|are|it's) (?:now )?(?:solid|correct|stable)\b|ready for (?:you|review|the)\b"
         r"|^\s*(?:confirmed|verified|tested|checked|double.checked|clicked through|ran|compared|pulled)\b.{0,160}"
         r"\b(?:match(?:es|ed)?|pass(?:es|ed)?|works?|lands?|fires?|hit|returns?|green|stays?|succeed(?:s|ed)?"
         r"|zero|clean(?:ly)?)\b",
@@ -187,7 +203,11 @@ HEDGE = re.compile(
     r"can't (?:confirm|verify|test|reproduce|say)|cannot (?:confirm|verify|test|say)|"
     r"not (?:yet )?(?:tested|verified|confirmed|run)|not sure|unclear|verifying|checking|"
     r"if it works|whether it works|should I|could you|would you|let me know|"
-    r"(?:won't|will not|can't|cannot|not going to|wouldn't|shouldn't) (?:claim|call|say)|not claiming)\b",
+    r"(?:won't|will not|can't|cannot|not going to|wouldn't|shouldn't) (?:claim|call|say)|not claiming|"
+    r"not (?:yet )?(?:ready|done|finished|complete)|before (?:calling|we (?:call|say)|saying|I (?:call|say))|"
+    r"will try|only (?:the first|one|some|part|half) of|"
+    r"(?:one|two|three|four|five|\d+) of (?:the )?(?:\w+ )?(?:two|three|four|five|six|seven|\d+)\b)\b|"
+    r"\bnot\b[^.]{0,30}\byet\b",
     re.I,
 )
 # Negation alone is not a hedge: "it didn't break anything" is a claim. Only negated
@@ -205,6 +225,10 @@ _FENCE = re.compile(r"```.*?```", re.S)
 _INLINE = re.compile(r"`[^`\n]*`")
 _QUOTED = re.compile("[\"“‘][^\"”’\\n]{0,200}[\"”’]")
 _BLOCKQUOTE = re.compile(r"^\s*>.*$", re.M)
+# Single quotes only when they open after whitespace or punctuation and close before
+# it - that is quotation ("I'd said 'the migration is done'"), while a contraction
+# ("it's", "didn't") never opens that way.
+_SQUOTED = re.compile(r"(?<=[\s:(\u2014-])'[^'\n]{3,200}'(?=[\s.,;:)!?]|$)")
 _SENTENCE = re.compile(r"[^.!?\n]+[.!?]?")
 
 
@@ -214,7 +238,7 @@ def strip_quoted(text: str) -> str:
     Measured on 190 real messages: without this, explaining pudding itself trips
     the gate, because the explanation contains the sentences it is about.
     """
-    for rx in (_FENCE, _INLINE, _BLOCKQUOTE, _QUOTED):
+    for rx in (_FENCE, _INLINE, _BLOCKQUOTE, _QUOTED, _SQUOTED):
         text = rx.sub(" . ", text)
     return text
 

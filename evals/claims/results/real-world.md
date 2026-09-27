@@ -39,3 +39,11 @@ This agrees with the synthetic held-out plateau (84% precision, 64% recall on sp
 About a third of real claims are phrased in ways a lexical detector doesn't catch,
 which is why the gate no longer depends on the detector to decide *whether* evidence
 is owed after real work - only *what kind*.
+
+## The README's "about 700"
+
+Before the gate existed (sessions up to 2026-09-16), the maintainer's software and content
+sessions contained 77 sessions and 1,184 end-of-turn messages. The shipped detector flags 633
+of them. Applying round 2's measured rates - 78% of flagged messages are real claims, and 40% of
+unflagged ones are claims it missed - gives 633 x 0.78 + 551 x 0.40 ≈ 714. That is an estimate
+from a 120-message sample, reported as "about 700", not a count.

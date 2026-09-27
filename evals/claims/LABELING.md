@@ -4,10 +4,12 @@ Two splits of end-of-turn messages written in the style of a coding agent's repo
 each labeled for whether it contains a **completion claim** and, if so, what kind.
 
 - `dev.jsonl` - 150 messages. Used to tune the detector.
-- `test.jsonl` - 200 messages. **Frozen before the detector was ever run on it.**
-  Its SHA-256 is in `test.sha256`, committed in the same commit as the file and
-  before any evaluation result exists in the history. Reported numbers come from
-  this split only.
+- `test.jsonl`, `test2.jsonl`, `test3.jsonl` - 200 messages each. Each was **frozen,
+  with its SHA-256 committed alongside it, before the detector version it measures
+  was ever run on it**, and each was written by a fresh context that had seen no
+  detector and no earlier split. After a split scored a version once, it became
+  tuning material for the next version, and a new split was commissioned. Results
+  for every round, including the ones that didn't go well, are in `results/`.
 
 ## Independence
 

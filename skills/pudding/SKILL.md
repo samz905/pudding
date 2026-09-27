@@ -5,6 +5,10 @@ description: Use when about to claim work is done, tested, working, verified, or
 
 # pudding
 
+> If this skill was opened by the user typing `/pudding <word>` (block, warn, off,
+> status, help, evidence, statusline), the pudding hook has already handled it and
+> shown the result. Reply in one line and stop; do not summarize this document.
+
 **The proof is in the pudding, not in the promise.**
 
 A completion claim is **earned by attached evidence, never asserted from memory.** The

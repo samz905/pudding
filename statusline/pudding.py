@@ -27,8 +27,22 @@ def counts(root: Path) -> Counter:
     return c
 
 
+def project_root():
+    """Claude Code pipes {"workspace": {"project_dir": ...}} to a statusline."""
+    try:
+        if not sys.stdin.isatty():
+            data = json.loads(sys.stdin.read() or "{}")
+            ws = data.get("workspace") or {}
+            d = ws.get("project_dir") or ws.get("current_dir") or data.get("cwd")
+            if d:
+                return Path(d)
+    except Exception:
+        pass
+    return Path(os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd())
+
+
 def main():
-    root = Path(os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd())
+    root = project_root()
     c = counts(root)
     earned, blocked, unearned, escaped = c["earned"], c["blocked"], c["unearned"], c["escaped"]
 

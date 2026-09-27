@@ -50,6 +50,13 @@ gap you omit reads as covered.
 The Stop hook checks this. An unearned claim does not end the turn.{extra}
 """
 
+WELCOME = """\
+\U0001F36E pudding is armed ({mode}).
+   Your agent can't end a turn on "done" or "it works" without matching evidence.
+   receipts   {receipts:<34}  committed
+   evidence   {evidence:<34}  gitignored{ignored}
+   /pudding help  \u00b7  /pudding warn  \u00b7  /pudding off"""
+
 NUDGE = """
 
 (pudding can show a live count in your statusline - ask the user once if they want it,
@@ -62,10 +69,12 @@ def main():
     root = core.project_dir()
     mode, _, _ = core.read_mode(root)
 
+    first_run = event == "SessionStart" and not core.has_armed_before(root)
+    added = []
     if event == "SessionStart":
         core.log({"event": "armed", "session_id": data.get("session_id", ""), "mode": mode}, root)
         if mode != "off":
-            core.ensure_ignored(root)
+            added = core.ensure_ignored(root)
 
     if mode == "off":
         core.emit({})
@@ -81,13 +90,23 @@ def main():
             except Exception:
                 pass
 
-    core.emit({"hookSpecificOutput": {
+    out = {"hookSpecificOutput": {
         "hookEventName": event,
         "additionalContext": PROTOCOL.format(mode=mode, extra=extra),
-    }})
+    }}
+    if first_run:
+        # Shown once per project. Without it a fresh install is silent until the
+        # first block, which reads as "it didn't install".
+        note = ("\n   (added " + " and ".join(added) + " to .gitignore)") if added else ""
+        out["systemMessage"] = WELCOME.format(mode=mode, receipts="receipts/<feature>-<date>.md",
+                                              evidence=core.evidence_dir(root) + "/<date>-<run>/",
+                                              ignored=note)
+    core.emit(out)
 
 
 def demo():
+    w = WELCOME.format(mode="block", receipts="receipts/x.md", evidence="receipts/evidence/", ignored="")
+    assert "pudding is armed (block)" in w and "/pudding help" in w
     assert "real-ui" in PROTOCOL and "{mode}" in PROTOCOL
     out = PROTOCOL.format(mode="block", extra="")
     assert "PUDDING ARMED - mode: block" in out and out.count("->") >= 9

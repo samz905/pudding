@@ -183,6 +183,13 @@ def ensure_ignored(root: Path = None) -> list:
     return added
 
 
+def has_armed_before(root: Path = None) -> bool:
+    try:
+        return '"event": "armed"' in log_path(root).read_text(encoding="utf-8")
+    except Exception:
+        return False
+
+
 def log(event: dict, root: Path = None) -> None:
     try:
         p = log_path(root)
@@ -264,8 +271,11 @@ def demo():
         assert "receipts/evidence" not in (root / ".gitignore").read_text() or True
         assert ensure_ignored(root) == [], "idempotent: git already ignores them now"
 
+        assert not has_armed_before(root)
+        log({"event": "armed", "session_id": "s"}, root)
+        assert has_armed_before(root)
         log({"event": "test", "n": 1}, root)
-        assert json.loads(log_path(root).read_text().strip())["event"] == "test"
+        assert json.loads(log_path(root).read_text().strip().splitlines()[-1])["event"] == "test"
     print("pudding_core: ok")
 
 

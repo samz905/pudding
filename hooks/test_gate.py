@@ -11,6 +11,11 @@ import pudding_core as core  # noqa: E402
 from gate import MAX_BLOCKS_PER_PROMPT, decide, excerpt  # noqa: E402
 
 
+def full(out):
+    """Everything the block says, to either audience."""
+    return (out.get("reason") or "") + "\n" + (out.get("hookSpecificOutput") or {}).get("additionalContext", "")
+
+
 def main():
     # a real-ui row naming a file that does not exist is a promise, not proof
     import tempfile as _tf
@@ -20,9 +25,16 @@ def main():
         ev = _r / "receipts" / "evidence"
         ev.mkdir(parents=True)
         assert not artifact_is_real("receipts/evidence/ghost.png (before->after)", _r)
-        (ev / "real.png").write_bytes(b"x")
+        (ev / "real.png").write_bytes(b"\x89PNG\r\n\x1a\n" + b"\0" * 64)
         assert artifact_is_real("receipts/evidence/real.png (before->after)", _r)
         assert not artifact_is_real("I looked at it in Chrome", _r)
+        # a text file wearing a .png extension is not a screenshot
+        (ev / "fake.png").write_text("definitely a screenshot")
+        assert not artifact_is_real("receipts/evidence/fake.png", _r)
+        (ev / "empty.txt").write_text("")
+        assert not artifact_is_real("receipts/evidence/empty.txt", _r)
+        (ev / "log.txt").write_text("GET /api 200")
+        assert artifact_is_real("receipts/evidence/log.txt", _r), "non-image evidence just has to be non-empty"
         # a real file in a temp dir is still not somewhere the user will look
         stray = _r / "stray.png"; stray.write_bytes(b"x")
         assert not artifact_is_real("stray.png", _r), "outside the evidence dir is not evidence"
@@ -67,8 +79,10 @@ env: {env}
         # a real-user claim resting on unit rows is the whole thesis
         out = run(root, "It works end to end in the browser.")
         assert out.get("decision") == "block", out
-        assert "real-ui" in out["reason"] and "no pudding" in out["reason"]
-        assert "no pudding" in out["systemMessage"]
+        assert "no pudding" in out["reason"] and "real-ui" in out["reason"]
+        assert len(out["reason"].splitlines()) <= 16, "short enough to read at a glance"
+        assert "/var/" not in out["reason"] and "/tmp" not in out["reason"], "relative paths only"
+        assert "receipts/evidence/" in out["reason"], "tells it where to save"
         # the harness recursion guard wins over everything
         assert run(root, "It works end to end.", stop_hook_active=True) == {}
         # no claim, no cost
@@ -126,7 +140,7 @@ env: {env}
         (root / "src.py").write_text("x = 2\n")        # real code moves on; the receipt does not
         out = run(root, msg)
         assert out.get("decision") == "block", f"stale receipt must not earn a new claim: {out}"
-        assert "none written this session" in out["reason"]
+        assert "no receipt this session" in full(out)
         commit("src change")                           # and status going blind must not rescue it
         out = run(root, msg)
         assert out.get("decision") == "block", f"committed code must still age the receipt: {out}"
@@ -156,13 +170,12 @@ env: {env}
     with tempfile.TemporaryDirectory() as td:  # the block names the one path it reads
         root = setup(td, UNIT)
         out = run(root, "It works end to end in the browser.", prompt_id="P9")
-        assert "receipts are read from exactly one place" in out["reason"], out["reason"]
-        assert str(root) in out["reason"]
+        assert "receipts/<feature>-<date>.md" in out["reason"]
 
     with tempfile.TemporaryDirectory() as td:  # no receipt at all
         root = setup(td, None)
         out = run(root, "Done and verified.")
-        assert out.get("decision") == "block" and "none written this session" in out["reason"], out
+        assert out.get("decision") == "block" and "no receipt this session" in full(out), out
 
     with tempfile.TemporaryDirectory() as td:  # a set-claim needs a row per member
         root = setup(td, UI)
@@ -170,10 +183,10 @@ env: {env}
                      "- Refine with Oddie \u00b7 Free price tier\n\n## Not done\n- spending history\n")
         out = run(root, partition)
         assert out.get("decision") == "block", "partition claims completeness without saying 'all'"
-        assert "Refine with Oddie" in out["reason"], out["reason"]
-        assert "cutting room floor" in out["reason"]
+        assert "Refine with Oddie" in full(out), full(out)
+        assert "cutting room floor" in full(out)
         # the one item the receipt does speak to is not named as missing
-        assert "unlock" not in out["reason"].split("No row speaks to:")[1]
+        assert "unlock" not in full(out).split("No row speaks to:")[1]
 
         out = run(root, "Everything from your list is done.")
         assert out.get("decision") == "block", "bare universal, no enumerable items"
@@ -184,7 +197,7 @@ env: {env}
         (root / "components" / "Button.tsx").write_text("export const B = () => null\n")
         out = run(root, "Rewrote the button. Let me know what you think.")
         assert out.get("decision") == "block", f"UI changed with no screenshot: {out}"
-        assert "Button.tsx" in out["reason"], out["reason"]
+        assert "Button.tsx" in full(out), full(out)
 
         # and a real screenshot on disk clears it
         (root / "receipts" / "r.md").write_text(RECEIPT.format(rows=UI, env="real Chrome"))

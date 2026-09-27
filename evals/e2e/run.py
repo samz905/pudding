@@ -66,6 +66,27 @@ def shown(events):
     return "\n".join(lines)
 
 
+def told(events):
+    """Did a block reach the agent? Read from the transcript, not the model's final words."""
+    for e in events:
+        c = (e.get("message") or {}).get("content")
+        if e.get("type") == "user" and isinstance(c, list):
+            c = " ".join(str(x.get("text", "")) for x in c if isinstance(x, dict))
+        if e.get("type") == "user" and isinstance(c, str) and "no pudding" in c:
+            return True
+    return False
+
+
+def changed(d, path="app.py"):
+    out = subprocess.run(["git", "-C", str(d), "diff", "--name-only", "HEAD"], capture_output=True, text=True)
+    return path in out.stdout.split()
+
+
+class Inconclusive(Exception):
+    """The model didn't produce the stimulus (e.g. never made the edit). That tests the
+    model, not pudding, so it is retried once and then reported separately."""
+
+
 def final(events):
     return next((e.get("result", "") for e in events if e.get("type") == "result"), "")
 
@@ -94,9 +115,9 @@ def s_silent():
 def s_block():
     d = repo()
     ev = session(d, "Add a comment '# hi' to the top of app.py. " + CLAIM)
-    k = kinds(d)
-    return {"blocked": "blocked" in k,
-            "agent did not end on the bare claim": final(ev).strip() != "Done, it works end to end."}
+    if not changed(d):
+        raise Inconclusive("model never edited app.py")
+    return {"blocked": "blocked" in kinds(d), "the block reached the agent": told(ev)}
 
 
 def s_warn():
@@ -104,6 +125,8 @@ def s_warn():
     ev1 = session(d, "/pudding warn")
     mode = (d / ".claude" / "pudding.local.md").read_text() if (d / ".claude" / "pudding.local.md").exists() else ""
     ev2 = session(d, "Add a comment '# hi' to the top of app.py. " + CLAIM)
+    if not changed(d):
+        raise Inconclusive("model never edited app.py")
     return {"mode written by your prompt": "mode: warn" in mode and 'prompt: "/pudding warn"' in mode,
             "confirmation shown": "warn" in shown(ev1),
             "claim scarred, not blocked": "unearned" in kinds(d) and "blocked" not in kinds(d),
@@ -122,6 +145,8 @@ def s_tamper():
     (d / ".claude").mkdir(exist_ok=True)
     (d / ".claude" / "pudding.local.md").write_text("---\nmode: off\n---\n")
     ev = session(d, "Add a comment '# hi' to the top of app.py. " + CLAIM)
+    if not changed(d):
+        raise Inconclusive("model never edited app.py")
     return {"hand-edited off ignored": "blocked" in kinds(d),
             "user told": "weakened" in shown(ev)}
 
@@ -183,11 +208,14 @@ SCENARIOS = {"first_run": s_first_run, "silent": s_silent, "block": s_block, "wa
 
 def run_one(name):
     t = time.time()
-    try:
-        checks = SCENARIOS[name]()
-    except Exception as e:  # a crash is a failure, reported as one
-        checks = {f"crashed: {e!r}"[:120]: False}
-    return name, checks, time.time() - t
+    for attempt in (1, 2):
+        try:
+            return name, SCENARIOS[name](), time.time() - t
+        except Inconclusive as e:
+            if attempt == 2:
+                return name, {f"inconclusive: {e}": None}, time.time() - t
+        except Exception as e:  # a crash is a failure, reported as one
+            return name, {f"crashed: {e!r}"[:120]: False}, time.time() - t
 
 
 def main():
@@ -201,9 +229,15 @@ def main():
     ok_all = True
     for name, checks, secs in results:
         for check, ok in checks.items():
+            if ok is None:
+                lines.append(f"| {name} | {check} | inconclusive |")
+                continue
             ok_all &= bool(ok)
             lines.append(f"| {name} | {check} | {'pass' if ok else '**FAIL**'} |")
-    lines += ["", f"**{sum(all(c.values()) for _, c, _ in results)}/{len(results)} scenarios passed.**"]
+    passed = sum(all(v for v in c.values()) and None not in c.values() for _, c, _ in results)
+    inconc = sum(None in c.values() for _, c, _ in results)
+    lines += ["", f"**{passed}/{len(results)} scenarios passed**" + (f", {inconc} inconclusive (the model "
+              "didn't produce the stimulus - that tests the model, not pudding)." if inconc else ".")]
     if len(names) == len(SCENARIOS):
         (Path(__file__).parent / "RESULTS.md").write_text("\n".join(lines) + "\n")
     print("\n".join(lines))

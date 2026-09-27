@@ -47,8 +47,11 @@ def real_block():
     return out["reason"]
 
 
-def svg(lines, width=920):
+def svg(lines, width=None):
     lh, top, left = 23, 58, 28
+    # size the frame to the longest line (monospace at 15px is ~9.05px a character),
+    # so a longer quoted claim can never run off the edge
+    width = width or max(920, int(left * 2 + 9.05 * max(len(t) for _, t, _ in lines)))
     h = top + lh * len(lines) + 26
     out = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{h}" viewBox="0 0 {width} {h}">',
            '<style>text{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:15px;'

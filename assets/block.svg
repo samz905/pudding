@@ -1,9 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="920" height="475" viewBox="0 0 920 475">
+<svg xmlns="http://www.w3.org/2000/svg" width="1015" height="475" viewBox="0 0 1015 475">
 <style>text{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:15px;white-space:pre}</style>
-<rect width="920" height="475" rx="12" fill="#1E1A17"/>
-<rect width="920" height="36" rx="12" fill="#2A2420"/><rect y="24" width="920" height="12" fill="#2A2420"/>
+<rect width="1015" height="475" rx="12" fill="#1E1A17"/>
+<rect width="1015" height="36" rx="12" fill="#2A2420"/><rect y="24" width="1015" height="12" fill="#2A2420"/>
 <circle cx="22" cy="18" r="6" fill="#FF5F57"/><circle cx="42" cy="18" r="6" fill="#FEBC2E"/><circle cx="62" cy="18" r="6" fill="#28C840"/>
-<text x="460" y="23" fill="#8C8076" text-anchor="middle" style="font-size:13px">claude</text>
+<text x="507" y="23" fill="#8C8076" text-anchor="middle" style="font-size:13px">claude</text>
 <text xml:space="preserve" x="28" y="58" fill="#8C8076">&gt; fix the discount on checkout and make sure it actually works</text>
 <text xml:space="preserve" x="28" y="81" fill="#8C8076"></text>
 <text xml:space="preserve" x="28" y="104" fill="#EDE6DD">⏺ Checkout is done - the discount flow works end to end in the browser, all 42 tests pass.</text>

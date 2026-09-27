@@ -20,8 +20,14 @@ the claim carry proof.
 **Core loop:** plan the proof → fill a **receipt** while testing → the done-report is
 **generated from the receipt**, and a claim without a row does not get said.
 
-Write the receipt to a file (`receipts/<feature>-<date>.md`). It must survive a long
-session and context compaction - which is exactly when overclaiming happens.
+Write the receipt to a file at the project root, `receipts/<feature>-<date>.md`. It must
+survive a long session and context compaction - which is exactly when overclaiming
+happens. Screenshots and other captures go in the evidence folder named at the start of
+each prompt (`receipts/evidence/<date>-<request>/`), never a temp dir.
+
+With the pudding plugin installed, a Stop hook enforces this: after real code changes, a
+turn that hands back needs a fresh verified row, and a claim needs a row whose method
+matches it. This skill is how to plan and produce that evidence well.
 
 ## When to use
 
@@ -63,7 +69,8 @@ claim | method | artifact | status
   (screenshot/DOM/URL). Exact - this is the anti-lie field.
 - **artifact** = something anyone can point at: a screenshot path, a before→after delta,
   a query result, a captured request, a named test. No artifact → status stays
-  `unverified`.
+  `unverified`. A `real-ui` artifact is a file inside the evidence folder that the user
+  can open - an image you only looked at in your own context is not one.
 - **status** ∈ `verified` · `unverified` · `blocked: <why - user decision needed>` ·
   `waived: <who/when>`. A skip the user chose is a **recorded decision** (`waived`),
   never a silent absence.

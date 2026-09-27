@@ -1,0 +1,13 @@
+{
+  "extraKnownMarketplaces": {
+    "pudding": {
+      "source": {
+        "source": "github",
+        "repo": "samz905/pudding"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "pudding@pudding": true
+  }
+}

@@ -95,6 +95,14 @@ def blocks_this_prompt(prompt_id, root):
     return n
 
 
+def in_git(root):
+    try:
+        return subprocess.run(["git", "-C", str(root), "rev-parse", "--is-inside-work-tree"],
+                              capture_output=True, text=True, timeout=3).returncode == 0
+    except Exception:
+        return False
+
+
 def source_changed(root, since):
     """Did THIS session touch code? Talking about work is not claiming it.
 
@@ -391,7 +399,10 @@ def decide(data, root):
     whole_set = claims_completeness(message)
     files = session_files(root, since)
     ui = [f for f in files if UI_FILE.search(f)]
-    reporting = is_report(message)
+    # The report rule needs to SEE work, which takes git. Outside a repo, explicit claims
+    # are still gated (fail-closed), but a plain answer is not assumed to be a report on
+    # work - that blocked every explanation in a non-git folder.
+    reporting = is_report(message) and in_git(root)
     if not (claims or whole_set or ui or reporting):
         return {}  # a question or a turn still in progress: nothing to prove yet
 

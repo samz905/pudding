@@ -1,0 +1,7 @@
+detector v4 on held-out split 3 (frozen before v4 existed; scored once)
+split: test3  n=200  (95% Wilson intervals)
+
+  precision    58/69   84.1%  [73.7- 90.9]   of what it flagged, how much was a real claim
+  recall       58/90   64.4%  [54.1- 73.6]   of real claims, how many it caught
+  false alarm  11/110  10.0%  [ 5.7- 17.0]   of non-claims, how many it wrongly flagged
+  F1          0.730

@@ -1,0 +1,6 @@
+run: https://github.com/samz905/pudding/actions/runs/36320596481
+conclusion: success
+self-checks (ubuntu-latest, 3.9): success
+self-checks (macos-latest, 3.12): success
+self-checks (ubuntu-latest, 3.12): success
+self-checks (macos-latest, 3.9): success

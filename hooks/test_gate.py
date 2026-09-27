@@ -178,6 +178,14 @@ env: {env}
         last = _j.loads(core.log_path(root).read_text().splitlines()[-1])["event"]
         assert last == "earned", f"logged as {last}"
 
+    with tempfile.TemporaryDirectory() as td:  # outside git: claims gated, plain answers not
+        root = Path(td)
+        explain = "The retry loop backs off exponentially with full jitter, capped at 8 seconds."
+        assert decide({"last_assistant_message": explain, "session_id": "s", "prompt_id": "ng1"}, root) == {}
+        claim = "Fixed it, the page works end to end in the browser."
+        out = decide({"last_assistant_message": claim, "session_id": "s", "prompt_id": "ng2"}, root)
+        assert out.get("decision") == "block", "an explicit claim is still gated outside git"
+
     with tempfile.TemporaryDirectory() as td:  # the block names the one path it reads
         root = setup(td, UNIT)
         out = run(root, "It works end to end in the browser.", prompt_id="P9")

@@ -324,7 +324,7 @@ def have_summary(rows):
     return ", ".join(f"{n} {m}" for m, n in sorted(counts.items(), key=lambda kv: -kv[1]))
 
 
-def excerpt(sentence, phrase, width=76):
+def excerpt(sentence, phrase, width=90):
     """Show the claim, not its preamble. Clipping the head once ate the only words
     that mattered: "Test stimulus, as requested (deliberately unearned - no receipt
     exists): ..." with `it works end to end` cut off the end."""

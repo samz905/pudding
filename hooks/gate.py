@@ -381,20 +381,6 @@ def decide(data, root):
     """The whole verdict, as a pure function of the hook input and the repo. Returns
     the JSON payload to print ({} means: let the turn end)."""
     prompt_id = data.get("prompt_id") or ""
-    spent = blocks_this_prompt(prompt_id, root)
-    if spent >= MAX_BLOCKS_PER_PROMPT:
-        # Budget spent. The claim gets through - the harness would force-end at 8
-        # anyway - but it does NOT get through quietly. A live probe repeated one
-        # unearned claim four times and escaped on the fourth, and the log showed
-        # three blocks and nothing else, reading exactly like enforcement had held.
-        core.log({"event": "escaped", "session_id": data.get("session_id", ""),
-                  "prompt_id": prompt_id, "event_kind": data.get("hook_event_name", "Stop"),
-                  "blocks_spent": spent}, root)
-        return {"systemMessage": (
-            "\U0001F36E  pudding gave up after %d blocks on this prompt.\n"
-            "  the claim ships UNPROVEN. persistence beat the gate - that is a\n"
-            "  recorded fact, not a pass: .claude/pudding.local.jsonl, event=escaped."
-            % spent)}
     if not prompt_id and data.get("stop_hook_active"):
         return {}  # no prompt_id to count against, so fall back to the coarse guard
 
@@ -474,6 +460,17 @@ def decide(data, root):
     if mode == "warn":
         core.log({"event": "unearned", **base}, root)
         return {"systemMessage": text}
+
+    # The budget applies only to a turn that is still unearned. Checking it first -
+    # the first version did - logged an agent as having escaped on the very stop where
+    # its receipt had finally become valid.
+    spent = blocks_this_prompt(prompt_id, root)
+    if spent >= MAX_BLOCKS_PER_PROMPT:
+        core.log({"event": "escaped", **base, "blocks_spent": spent}, root)
+        return {"systemMessage": (
+            "\U0001F36E  pudding gave up after %d blocks on this prompt.\n"
+            "  this ships UNPROVEN. persistence beat the gate - that is a recorded\n"
+            "  fact, not a pass: .claude/pudding.local.jsonl, event=escaped." % spent)}
 
     core.log({"event": "blocked", **base}, root)
     # Measured in a real terminal: `reason` renders to the human as "Stop hook error"

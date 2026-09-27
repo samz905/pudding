@@ -167,6 +167,17 @@ env: {env}
     assert len(excerpt(long, "works end to end")) <= 96
     assert excerpt("It works end to end.", "works end to end") == "It works end to end."
 
+    with tempfile.TemporaryDirectory() as td:  # evidence that arrives after the budget still earns
+        root = setup(td, None)
+        msg = "Renamed it everywhere and the tests pass."
+        for i in range(MAX_BLOCKS_PER_PROMPT):
+            assert run(root, msg, prompt_id="late").get("decision") == "block"
+        (root / "receipts" / "late.md").write_text(RECEIPT.format(rows=UNIT, env="local"))
+        assert run(root, msg, prompt_id="late") == {}, "a valid receipt on the 4th stop is earned, not escaped"
+        import json as _j
+        last = _j.loads(core.log_path(root).read_text().splitlines()[-1])["event"]
+        assert last == "earned", f"logged as {last}"
+
     with tempfile.TemporaryDirectory() as td:  # the block names the one path it reads
         root = setup(td, UNIT)
         out = run(root, "It works end to end in the browser.", prompt_id="P9")

@@ -16,93 +16,137 @@ Claim = namedtuple("Claim", "family phrase sentence")
 
 ANY = None  # satisfied by any verified row
 
+# Word lists shared by several patterns.
+_STATE = (r"(?:fixed|done|working|built|merged|shipped|passing|green|complete|completed|in place|"
+          r"wired(?: up)?|resolved|up and running|persisting|firing)")
+
 FAMILIES = [
     Family(
         "real-user",
-        r"works? (?:as a real user|end.to.end)|(?:tested|verified|working|confirmed)\s+end.to.end"
-        r"|end.to.end (?:in|from|through)|as a real user|like a real user"
-        r"|in the (?:app|browser|UI)\b|on your (?:real|actual) ",
+        r"works? (?:as a real user|end.to.end)|(?:tested|verified|working|confirmed|checked)\s+end.to.end"
+        r"|end.to.end (?:in|from|through|pass)|as a (?:real|brand.new|new|first.time) (?:user|signup|customer)"
+        r"|like a real user|clicked through|walked through the (?:whole|full|entire)"
+        r"|(?:works?|working|tested|verified|checked|confirmed|tried|renders?|shows? up|loads?)\b.{0,30}\bin the "
+        r"(?:app|browser|UI)\b"
+        r"|on your (?:real|actual) |signed up (?:with|as) a|installing this for the first time"
+        r"|the way a (?:real |new )?user would|as a user would",
         {"real-ui"}, False, False,
         "a real-ui artifact: a screenshot, a DOM capture, or the URL you actually drove",
     ),
     Family(
         "design-match",
-        r"matches? the (?:design|mock|reference|comp)|likeness|pixel.(?:perfect|honest)|design fidelity",
+        r"match(?:es|ed)? the (?:design|mock(?:up)?|reference|comp|figma|spec(?: doc)?)|against the "
+        r"(?:figma|mock(?:up)?|design|spec)|pixel by pixel|pixel.(?:perfect|honest)|design fidelity|likeness"
+        r"|confirmed against the spec",
         {"real-ui"}, True, False,
         "a real-ui screenshot paired against the reference (before/after or shot-vs-design)",
     ),
     Family(
         "deployed",
-        r"\b(?:is|are|it's) live\b|\b(?:is |are |now )?deployed\b|in prod(?:uction)?\b|\bit's up\b"
-        r"|pushed to prod|on (?:the )?(?:staging|preview|production) (?:url|link|site)",
+        r"\b(?:is|are|it's|now) live\b|\blive on\b|\b(?:is|are|now|been|got) deployed\b|\bdeployed to\b"
+        r"|\bin prod(?:uction)? now\b|\bit's up\b|pushed to prod|rolled out|rollout is (?:done|complete)"
+        r"|on (?:the )?(?:staging|preview|production) (?:url|link|site)|released to|published to (?:npm|pypi)"
+        r"|\bv\d+\.\d+(?:\.\d+)? is (?:out|live|published)|running on the new"
+        r"|serving (?:live|production|real) traffic|every\b.{0,40}\b(?:pod|instance|server|node|host)s? (?:is|are) "
+        r"(?:now )?running",
         {"real-ui"}, False, True,
         "a real-ui artifact captured against the DEPLOYED url, with env naming it - localhost is not the deploy",
     ),
     Family(
         "metric",
-        r"the (?:count|number|metric|total|figure)s? (?:is|are) (?:right|correct)"
-        r"|counts? correctly|shows? the (?:right|correct) (?:count|number|value)",
+        r"the (?:count|number|metric|total|figure|rate|tile|counter|badge)s? (?:is|are|now) (?:right|correct|"
+        r"accurate)|counts? (?:correctly|match)|numbers? (?:match|line up)|now (?:reads|shows|reports|displays) "
+        r"[\d,.$%]|(?:lines up|match(?:es)?) exactly|matches reality|cross.?checked\b.{0,80}\b(?:match|line up)",
         {"db", "real-ui"}, False, False,
         "a db read or a real-ui capture showing the SURFACED value move",
     ),
     Family(
         "persisted",
-        r"(?:row|record|event|entry|document)s? (?:is|are|get|gets) (?:written|recorded|saved|created|persisted)"
-        r"|persists? correctly|lands? in the (?:db|database|table)",
+        r"(?:row|record|event|entry|document)s? (?:is |are |get |gets )?(?:written|recorded|saved|created|"
+        r"persisted|lands?)\b|persist(?:s|ing)? correctly|lands? in the (?:db|database|\w+ table|table)"
+        r"|(?:is|are) (?:now )?persist(?:ed|ing)|now (?:holds|has|contains) (?:all )?[\d,]+ (?:rows|records)",
         {"db"}, False, False,
         "a db artifact: the query and the row it returned",
     ),
     Family(
         "wire",
-        r"(?:the|a|its|our) (?:webhook|request|callback|payload|message|event) "r"(?:fires|is sent|goes out|is delivered|arrives)"
-        r"|fires correctly",
+        r"(?:the|a|its|our) (?:webhook|request|callback|payload|message|event|download|notification|ping) "
+        r"(?:now )?(?:fires|is sent|goes out|is delivered|arrives|lands)|fires (?:correctly|on every)|now fires"
+        r"|(?:actually|now) fires|hit our endpoint|posts to (?:the )?#|triggers? on every"
+        r"|(?:message|ping|notification|email|alert|event)s? (?:showed up|landed|lands?|arrived|appeared) in"
+        r"|watched (?:the|it|them)\b.{0,30}\b(?:land|arrive|show up|come through)",
         {"wire"}, False, False,
         "a wire artifact: the captured request, webhook, or queue payload",
     ),
     Family(
         "bug-fixed",
-        r"(?:bug|issue|crash|error|regression) is fixed|no longer (?:repros|reproduces|happens|occurs)"
-        r"|(?:doesn't|does not) happen (?:any ?more|again)|fixed the (?:bug|crash|error)",
-        ANY, False, False,
+        r"(?:bug|issue|crash|error|regression|leak|race(?: condition)?|hang|off.by.one|timeout)s? (?:is |are )?"
+        r"(?:now )?(?:fixed|gone|resolved)|\bno longer (?:\w+)|(?:doesn't|does not) (?:happen|occur|reproduce) "
+        r"(?:any ?more|again)|^\s*fixed(?: it| that| this)?\b|fixed the (?:bug|crash|error|leak|race|hang)"
+        r"|\b(?:zero|no more) (?:duplicate|errors|failures|crashes)|repro(?:duction)?(?: script)?\b.{0,60}"
+        r"\b(?:now|and it|zero|no longer)|isn't (?:there|happening) any ?more|stay(?:s|ed) flat"
+        r"|completed cleanly|(?:ran|completed|finished) clean(?:ly)? (?:each|every) time|no (?:more )?hangs\b"
+        r"|(?:hasn't|has not) (?:recurred|come back|happened (?:again|since))",
+        None, False, False,
         "the reproduction re-run and now failing to reproduce - a fix with no repro row is a guess",
     ),
     Family(
         "faster",
-        r"\d+(?:\.\d+)?\s*(?:x|%|times) faster|(?:is |much |now )faster\b"
-        r"|(?:performance|latency|load time) (?:improved|is better|dropped)|uses less (?:memory|cpu|ram)",
-        ANY, True, False,
+        r"\d+(?:\.\d+)?\s*(?:x|%|times) (?:faster|smaller|less)|(?:is |much |now )faster\b|(?:performance|"
+        r"latency|load time|p9\d) (?:improved|is better|dropped|down)|uses less (?:memory|cpu|ram)"
+        r"|takes? [\d.]+\s*\w* (?:now )?instead of|(?:down|dropped) (?:from|to) [\d.]+\s*(?:kb|mb|ms|s\b|seconds|"
+        r"minutes)|now takes [\d.]+|\btook [\dhms:.]+\b.{0,60}\b(?:lands at|now takes|this one|now) [\dhms:.]+",
+        None, True, False,
         "a before -> after measurement pair, not a single number",
     ),
     Family(
         "installs-clean",
-        r"installs? clean|builds? clean(?:ly)?|fresh (?:install|clone|checkout) works|from scratch works"
-        r"|works on a clean (?:machine|env)",
-        ANY, False, False,
+        r"installs? clean|builds? (?:clean(?:ly)?|and starts)|fresh (?:install|clone|checkout|machine)"
+        r"|cloned (?:the repo )?fresh|from scratch works|clean (?:machine|env|home directory|checkout)"
+        r"|zero manual steps|works on a clean|brand.new (?:vm|machine|box|laptop|container)|came up (?:healthy|clean(?:ly)?)"
+        r"|nothing (?:else )?(?:installed )?on it",
+        None, False, False,
         "an artifact from a fresh environment, not from your warmed-up one",
     ),
     Family(
         "no-break",
-        r"(?:doesn't|does not|won't) break (?:existing|anything|any)|backwards? compatible|no regressions?",
-        ANY, False, False,
+        r"(?:doesn't|does not|won't|didn't) break|backwards? compatible|no regressions?|nothing (?:downstream )?"
+        r"broke|no breaking changes|(?:all )?existing (?:consumers|clients|callers|users) still"
+        r"|still (?:parse|pass|work)s?\b.{0,40}\b(?:old|existing|v1)|exactly as before|byte.identical"
+        r"|identical output|has(?:n't| not)? anything to change|nobody\b.{0,50}\bhas anything to change",
+        None, False, False,
         "the prior consumer still running",
     ),
     Family(
         "completeness",
         r"\ball items\b(?:\s+\w+){0,2}\s+(?:built|done|shipped|implemented|in)\b"
-        r"|\ball (?:\d+|the|of the)?\s*(?:items?|asks?|points?|rows?|feedback|fixes)\b"
-        r"(?:\s+\w+){0,3}\s+(?:are|is|were)?\s*(?:done|built|shipped|implemented|addressed|verified)"
-        r"|everything (?:from|on|in|else|in) [^.]{0,60}?(?:is|are) (?:done|built|verified|addressed|implemented|shipped)"
-        r"|everything(?: else)? (?:is|are) (?:done|built|verified|addressed|implemented|shipped)"
-        r"|the rest (?:are|is) (?:done|built|verified|addressed)"
-        r"|(?:all|every) (?:the )?feedback (?:is|are|has been) (?:done|addressed|implemented|verified)",
-        ANY, False, False,
+        r"|\ball (?:\d+|the|of the|two|three|four|five|six|seven|eight)?\s*(?:\w+ ){0,3}(?:items?|asks?|points?"
+        r"|rows?|feedback|fixes|endpoints?|subcommands?|tickets?|tasks?|issues?|changes|pieces)\b[^.]{0,80}?"
+        r"\b(?:are|were|is)?\s*(?:now )?(?:done|built|fixed|shipped|implemented|addressed|verified|in|merged)\b"
+        r"|everything (?:from|on|in|else) [^.]{0,60}?(?:is|are) (?:done|built|verified|addressed|implemented|"
+        r"shipped)|everything(?:'s| else)? (?:is |are )?(?:done|built|verified|addressed|implemented|shipped|in)\b"
+        r"|the rest (?:are|is) (?:done|built|verified|addressed)|(?:all|every) (?:the )?feedback (?:is|are|has "
+        r"been) (?:done|addressed|implemented|verified)|nothing left on (?:that|the|your) list"
+        r"|went through (?:the whole|the full|the entire|every)\b.{0,60}\b(?:list|checklist|ticket)",
+        None, False, False,
         "one verified row per item you are calling done - not one row standing in for the set",
     ),
     Family(
         "generic",
         r"\bit works\b|\bdone and verified\b|\ball green\b|\bfully tested\b|\beverything works\b"
-        r"|\bconfirmed working\b|\bworks now\b|\bnow works\b|\bis working\b|\bworks correctly\b",
-        ANY, False, False,
+        r"|\bconfirmed working\b|\bworks now\b|\bnow works\b|\bis working\b|\bworks correctly\b"
+        r"|^\s*(?:done|shipped|merged|sorted|all set|good to go|ready to (?:merge|ship|go))\b"
+        r"|you're all set|that's (?:done|sorted|fixed|in|shipped)|\ball (?:\d+ )?(?:tests? )?pass(?:ing)?\b"
+        r"|\b(?:tests?|suite|checks?|ci|build) (?:is |are )?(?:all )?(?:green|passing)\b"
+        r"|\b(?:is|are|'s) (?:now )?" + _STATE + r"\b"
+        r"|\b(?:built|tested|merged|shipped|verified|confirmed)(?:,| and) (?:tested|merged|verified|deployed|shipped)\b"
+        r"|\ball \d+ \w+ (?:pass|match|succeed)|\beverything'?s in\b|\bnothing left\b"
+        r"|\b(?:tracked|worked|behaved|rendered|loaded|synced|saved|formatted) correctly\b"
+        r"|\b(?:core|whole|main|happy) (?:flow|path) (?:is|was) (?:solid|clean|good)\b|\bthey line up\b"
+        r"|^\s*(?:confirmed|verified|tested|checked|double.checked|clicked through|ran|compared|pulled)\b.{0,160}"
+        r"\b(?:match(?:es|ed)?|pass(?:es|ed)?|works?|lands?|fires?|hit|returns?|green|stays?|succeed(?:s|ed)?"
+        r"|zero|clean(?:ly)?)\b",
+        None, False, False,
         "at least one verified row with a real artifact",
     ),
 ]
@@ -135,12 +179,20 @@ NOT_DONE_HEAD = re.compile(
 # "Verifying on your real timeline before I tell you it works" gets blocked for
 # being careful, which would train exactly the wrong habit.
 HEDGE = re.compile(
-    r"\b(?:before I|not yet|haven't|have not|hasn't|has not|don't|do not|didn't|did not|can't|cannot|"
-    r"won't|will|going to|about to|next I|once I|need to|should work|unverified|untested|"
-    r"verifying|checking|testing it|if it works|whether it works|claim(?:ing)? more|no proof|"
-    r"without proof|not proven|can I|should I|would|could)\b",
+    r"\b(?:before I|not yet|so far|still running|in progress|pending|waiting on|once I|once it|next I|"
+    r"I'll|I will|we'll|will (?:fix|work|be)|going to|about to|need to|needs to|should|"
+    r"might|may (?:fix|work)|probably|likely|I think|I believe|hopefully|unverified|untested|"
+    r"haven't (?:run|tested|verified|checked|tried|confirmed)|have not (?:run|tested|verified|checked|tried|"
+    r"confirmed)|didn't (?:run|test|verify|check|try|get to)|did not (?:run|test|verify|check|try)|"
+    r"can't (?:confirm|verify|test|reproduce|say)|cannot (?:confirm|verify|test|say)|"
+    r"not (?:yet )?(?:tested|verified|confirmed|run)|not sure|unclear|verifying|checking|"
+    r"if it works|whether it works|should I|could you|would you|let me know|"
+    r"(?:won't|will not|can't|cannot|not going to|wouldn't|shouldn't) (?:claim|call|say)|not claiming)\b",
     re.I,
 )
+# Negation alone is not a hedge: "it didn't break anything" is a claim. Only negated
+# VERIFICATION is ("didn't test", "can't confirm") - the first version dropped every
+# sentence with "didn't" or "can't" in it and missed a whole family of real claims.
 
 # A sentence telling the USER to do something is an instruction, not a claim.
 _IMPERATIVE = re.compile(
@@ -210,13 +262,19 @@ def detect(message: str):
         return []
     found, seen = [], set()
     for sentence in _SENTENCE.findall(strip_quoted(message)):
-        if HEDGE.search(sentence) or _IMPERATIVE.match(sentence):
+        if HEDGE.search(sentence) or _IMPERATIVE.match(sentence) or sentence.strip().endswith("?"):
             continue
         for fam in FAMILIES:
             m = re.search(fam.pattern, sentence, re.I)
             if m and fam.name not in seen:
                 seen.add(fam.name)
                 found.append(Claim(fam, m.group(0).strip(), sentence.strip()))
+    for head in re.findall(r"^\s*#{1,4}\s*(.+?)\s*$", message, re.M):
+        if re.search(r"(?:\u2014|\u2013|-|:)\s*(?:done|complete|shipped|fixed|merged|live)\s*[.!]?$", head, re.I) \
+                and "generic" not in seen:
+            seen.add("generic")
+            gen = next(f for f in FAMILIES if f.name == "generic")
+            found.append(Claim(gen, head.strip(), head.strip()))
     # A specific family always outranks the generic one.
     if len(found) > 1:
         found = [c for c in found if c.family.name != "generic"]

@@ -25,7 +25,8 @@ FAMILIES = [
         "real-user",
         r"works? (?:as a real user|end.to.end)|(?:tested|verified|working|confirmed|checked)\s+end.to.end"
         r"|end.to.end (?:in|from|through|pass)|as a (?:real|brand.new|new|first.time) (?:user|signup|customer)"
-        r"|like a real user|clicked through|walked through the (?:whole|full|entire)"
+        r"|like a real user|clicked through|walked through the (?:whole|full|entire)|(?:tested|verified|confirmed|"
+        r"checked)\b.{0,40}\bend.to.end|the way a (?:support agent|customer|admin|real user) would|dogfooded"
         r"|(?:works?|working|tested|verified|checked|confirmed|tried|renders?|shows? up|loads?)\b.{0,30}\bin the "
         r"(?:app|browser|UI)\b"
         r"|on your (?:real|actual) |signed up (?:with|as) a|installing this for the first time"
@@ -39,7 +40,8 @@ FAMILIES = [
         "design-match",
         r"match(?:es|ed)? the (?:design|mock(?:up)?|reference|comp|figma|spec(?: doc)?)|against the "
         r"(?:figma|mock(?:up)?|design|spec)|pixel by pixel|pixel.(?:perfect|honest)|design fidelity|likeness"
-        r"|confirmed against the spec|match(?:es|ed)? the (?:\w+ )?(?:contract|schema)\b|byte for byte",
+        r"|confirmed against the spec|match(?:es|ed)? the (?:\w+ )?(?:contract|schema)\b|byte for byte"
+        r"|side by side with|next to the (?:figma|mock(?:up)?|design|spec)|exactly as the spec",
         {"real-ui"}, True, False,
         "a real-ui screenshot paired against the reference (before/after or shot-vs-design)",
     ),
@@ -51,7 +53,7 @@ FAMILIES = [
         r"|\bv\d+\.\d+(?:\.\d+)? is (?:out|live|published)|running on the new"
         r"|serving (?:live|production|real) traffic|every\b.{0,40}\b(?:pod|instance|server|node|host)s? (?:is|are) "
         r"(?:now )?running|\b(?:is|it's|are) (?:fully |now )live\b|(?:prod|production|staging) (?:is )?(?:now )?running"
-        r"|\brunning now\b|out the door|^\s*(?:deployed|pushed|shipped|released|rolled)\b.{0,80}\b(?:to|out to|into) "
+        r"|(?:v?\d[\w.]*|version|build|release|image) (?:is )?running now\b|out the door|^\s*(?:deployed|pushed|shipped|released|rolled)\b.{0,80}\b(?:to|out to|into) "
         r"(?:prod(?:uction)?|staging|the (?:\w+ )?server|the fleet|main)",
         {"real-ui"}, False, True,
         "a real-ui artifact captured against the DEPLOYED url, with env naming it - localhost is not the deploy",
@@ -72,7 +74,9 @@ FAMILIES = [
         r"persisted|lands?)\b|persist(?:s|ing)? correctly|lands? in the (?:db|database|\w+ table|table)"
         r"|(?:is|are) (?:now )?persist(?:ed|ing)|now (?:holds|has|contains) (?:all )?[\d,]+ (?:rows|records)"
         r"|(?:durably )?written (?:back )?to (?:the )?(?:\w+ )?(?:table|db|database|postgres|disk|outbox)"
-        r"|(?:rows|records|events) (?:now have|showed up|appear)",
+        r"|(?:rows|records|events) (?:now have|showed up|appear)|still (?:there|sitting|present) (?:after|under|in)"
+        r"|survived the (?:restart|relaunch|reboot|refresh|eviction|crash)|picked (?:back )?up (?:exactly )?where it "
+        r"left off|replayed\b.{0,40}\bexactly once",
         {"db"}, False, False,
         "a db artifact: the query and the row it returned",
     ),
@@ -82,7 +86,9 @@ FAMILIES = [
         r"(?:now )?(?:fires|is sent|goes out|is delivered|arrives|lands)|fires (?:correctly|on every)|now fires"
         r"|(?:actually|now) fires|hit our endpoint|posts to (?:the )?#|triggers? on every"
         r"|(?:message|ping|notification|email|alert|event)s? (?:showed up|landed|lands?|arrived|appeared) in"
-        r"|watched (?:the|it|them)\b.{0,30}\b(?:land|arrive|show up|come through)|\bshowed up in\b",
+        r"|watched (?:the|it|them)\b.{0,30}\b(?:land|arrive|show up|come through)|\bshowed up in\b"
+        r"|all (?:\w+ )?(?:landed|arrived|went through)|(?:device|client|endpoint|consumer) received it"
+        r"|actually threads through|payload includes\b.{0,60}\bexactly",
         {"wire"}, False, False,
         "a wire artifact: the captured request, webhook, or queue payload",
     ),
@@ -106,7 +112,8 @@ FAMILIES = [
         r"latency|load time|p9\d) (?:improved|is better|dropped|down)|uses less (?:memory|cpu|ram)"
         r"|takes? [\d.]+\s*\w* (?:now )?instead of|(?:down|dropped) (?:from|to) [\d.]+\s*(?:kb|mb|ms|s\b|seconds|"
         r"minutes)|now takes [\d.]+|\btook [\dhms:.]+\b.{0,60}\b(?:lands at|now takes|this one|now) [\dhms:.]+"
-        r"|went from [\d.,]+\s*\w* to [\d.,]+|used to (?:take|run)\b.{0,50}\bnow (?:finishes|takes|runs)",
+        r"|(?:went|dropped|fell|rose|climbed|improved|down|up) from [^.]{1,40}? to [^.]{1,30}"
+        r"|used to (?:take|run)\b.{0,50}\bnow (?:finishes|takes|runs)|feels instant",
         None, True, False,
         "a before -> after measurement pair, not a single number",
     ),
@@ -115,7 +122,8 @@ FAMILIES = [
         r"installs? clean|builds? (?:clean(?:ly)?|and starts)|fresh (?:install|clone|checkout|machine)"
         r"|cloned (?:the repo )?fresh|from scratch works|clean (?:machine|env|home directory|checkout)"
         r"|zero manual steps|works on a clean|brand.new (?:vm|machine|box|laptop|container)|came up (?:healthy|clean(?:ly)?)"
-        r"|nothing (?:else )?(?:installed )?on it",
+        r"|nothing (?:else )?(?:installed )?on it|clean (?:npm |pip |cargo )?install|fresh vm|no build errors"
+        r"|in an empty directory on a",
         None, False, False,
         "an artifact from a fresh environment, not from your warmed-up one",
     ),
@@ -125,7 +133,8 @@ FAMILIES = [
         r"broke|no breaking changes|(?:all )?existing (?:consumers|clients|callers|users) still"
         r"|still (?:parse|pass|work)s?\b.{0,40}\b(?:old|existing|v1)|exactly as before|byte.identical"
         r"|identical output|has(?:n't| not)? anything to change|nobody\b.{0,50}\bhas anything to change"
-        r"|still (?:parse|pass|work|run)s?\b|(?:no one|nobody) (?:gets|is) (?:logged out|affected|broken)",
+        r"|still (?:parse|pass|work|run)s?\b|(?:no one|nobody) (?:gets|is) (?:logged out|affected|broken)"
+        r"|no new (?:failures|errors|warnings)|same (?:pass count|results?) as before",
         None, False, False,
         "the prior consumer still running",
     ),
@@ -134,7 +143,8 @@ FAMILIES = [
         r"\ball items\b(?:\s+\w+){0,2}\s+(?:built|done|shipped|implemented|in)\b"
         r"|\ball (?:\d+|the|of the|two|three|four|five|six|seven|eight)?\s*(?:\w+ ){0,3}(?:items?|asks?|points?"
         r"|rows?|feedback|fixes|endpoints?|subcommands?|tickets?|tasks?|issues?|changes|pieces)\b[^.]{0,80}?"
-        r"\b(?:are|were|is)?\s*(?:now )?(?:done|built|fixed|shipped|implemented|addressed|verified|in|merged)\b"
+        r"\b(?:are|were|is)?\s*(?:now )?(?:done|built|fixed|shipped|implemented|addressed|verified|in|merged|"
+        r"migrated|moved|converted|ported|updated)\b"
         r"|everything (?:from|on|in|else) [^.]{0,60}?(?:is|are) (?:done|built|verified|addressed|implemented|"
         r"shipped)|everything(?:'s| else)? (?:is |are )?(?:done|built|verified|addressed|implemented|shipped|in)\b"
         r"|the rest (?:are|is) (?:done|built|verified|addressed)|(?:all|every) (?:the )?feedback (?:is|are|has "
@@ -149,7 +159,8 @@ FAMILIES = [
         "generic",
         r"\bit works\b|\bdone and verified\b|\ball green\b|\bfully tested\b|\beverything works\b"
         r"|\bconfirmed working\b|\bworks now\b|\bnow works\b|\bis working\b|\bworks correctly\b"
-        r"|^\s*(?:done|shipped|merged|sorted|all set|good to go|ready to (?:merge|ship|go))\b"
+        r"|^\s*(?:done|shipped|merged|sorted|all set|all sorted|all good|lgtm|good to go|ready to (?:merge|ship|go))\b"
+        r"|\b(?:behaves|works|renders|loads|runs|saves|syncs|resolves) correctly\b|(?:\s[\u2014-]|;)\s*verified\b"
         r"|you're all set|that's (?:done|sorted|fixed|in|shipped)|\ball (?:\d+ )?(?:tests? )?pass(?:ing)?\b"
         r"|\b(?:tests?|suite|checks?|ci|build) (?:is |are )?(?:all )?(?:green|passing)\b"
         r"|\b(?:is|are|'s) (?:now )?" + _STATE + r"\b"
@@ -204,6 +215,8 @@ HEDGE = re.compile(
     r"not (?:yet )?(?:tested|verified|confirmed|run)|not sure|unclear|verifying|checking|"
     r"if it works|whether it works|should I|could you|would you|let me know|"
     r"(?:won't|will not|can't|cannot|not going to|wouldn't|shouldn't) (?:claim|call|say)|not claiming|"
+    r"hasn't (?:been )?(?:run|gone through|finished)|still (?:queued|running|pending|in progress)|"
+    r"once (?:the|it|this|that|we)\b|watching\b.{0,40}\bbefore|"
     r"not (?:yet )?(?:ready|done|finished|complete)|before (?:calling|we (?:call|say)|saying|I (?:call|say))|"
     r"will try|only (?:the first|one|some|part|half) of|"
     r"(?:one|two|three|four|five|\d+) of (?:the )?(?:\w+ )?(?:two|three|four|five|six|seven|\d+)\b)\b|"
@@ -220,6 +233,9 @@ _IMPERATIVE = re.compile(
     r"install|type|paste|reload|restart|drive|look)\b",
     re.I,
 )
+
+# Reviewing or describing someone else's change is not a claim about your own work.
+_OTHERS = re.compile(r"\b(?:reviewed|reviewing|approving|approved)\b|\b[A-Z]\w+'s (?:PR|pull request|branch|change|fix)\b")
 
 _FENCE = re.compile(r"```.*?```", re.S)
 _INLINE = re.compile(r"`[^`\n]*`")
@@ -286,7 +302,8 @@ def detect(message: str):
         return []
     found, seen = [], set()
     for sentence in _SENTENCE.findall(strip_quoted(message)):
-        if HEDGE.search(sentence) or _IMPERATIVE.match(sentence) or sentence.strip().endswith("?"):
+        if HEDGE.search(sentence) or _IMPERATIVE.match(sentence) or sentence.strip().endswith("?") \
+                or _OTHERS.search(sentence):
             continue
         for fam in FAMILIES:
             m = re.search(fam.pattern, sentence, re.I)

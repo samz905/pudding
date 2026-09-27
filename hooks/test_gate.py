@@ -205,6 +205,19 @@ env: {env}
         out = run(root, "Rewrote the button.")
         assert out == {}, f"a real screenshot clears it: {out}"
 
+    with tempfile.TemporaryDirectory() as td:  # reporting back after real work needs a row, phrased any way
+        root = setup(td, None)
+        plain = "Swapped the loop for a set lookup in dedupe.py and updated the call site."
+        out = run(root, plain, prompt_id="w1")
+        assert out.get("decision") == "block", f"a claim-free report after code changes still needs proof: {out}"
+        assert "work you did" in full(out)
+        assert run(root, "Changed dedupe.py. Want me to update the docs too?", prompt_id="w2") == {}, "a question"
+        assert run(root, "Still working: dedupe.py is half done, continuing with the call sites.",
+                   prompt_id="w3") == {}, "in progress"
+        (root / "receipts").mkdir(exist_ok=True)
+        (root / "receipts" / "r.md").write_text(RECEIPT.format(rows=UNIT, env="local"))
+        assert run(root, plain, prompt_id="w4") == {}, "a fresh verified row earns a plain report"
+
     with tempfile.TemporaryDirectory() as td:  # pudding's own writes are not a code change
         root = Path(td)
         sp.run(["git", "init", "-q", str(root)], check=True)

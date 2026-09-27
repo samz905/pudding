@@ -55,6 +55,28 @@ def session_start(session_id, root):
     return time.time() - STALE_SECONDS
 
 
+IN_PROGRESS = re.compile(
+    r"\b(?:still working|work in progress|\bWIP\b|in progress|next,? I'll|I'll (?:continue|keep going|finish|"
+    r"pick (?:this|it) up)|continuing (?:with|on)|not done yet|not finished|halfway|part \d+ of \d+|"
+    r"(?:first|next) (?:step|pass|half)|waiting (?:on|for) (?:you|your))\b", re.I)
+
+
+def is_report(message):
+    """Is the agent handing work back, rather than asking or still going?
+
+    A report is anything that isn't a question and doesn't say it's unfinished -
+    deliberately broad, because the point of this rule is not to depend on how the
+    report is phrased.
+    """
+    text = (message or "").strip()
+    if len(text) < 8:
+        return False
+    last = [ln.strip() for ln in text.splitlines() if ln.strip()][-1]
+    if last.endswith("?") or IN_PROGRESS.search(text):
+        return False
+    return True
+
+
 def blocks_this_prompt(prompt_id, root):
     """How many times this same user prompt has already been blocked."""
     if not prompt_id:
@@ -279,6 +301,13 @@ def excerpt(sentence, phrase, width=76):
     start = max(0, i - (width - len(phrase)) // 2)
     end = min(len(sentence), start + width)
     start = max(0, end - width)
+    # snap to word boundaries so the quote never starts or ends mid-word
+    if start:
+        sp = sentence.find(" ", start)
+        start = sp + 1 if 0 <= sp < i else start
+    if end < len(sentence):
+        sp = sentence.rfind(" ", i + len(phrase), end)
+        end = sp if sp > 0 else end
     return ("..." if start else "") + sentence[start:end].strip() + ("..." if end < len(sentence) else "")
 
 
@@ -337,9 +366,11 @@ def decide(data, root):
     message = data.get("last_assistant_message") or ""
     claims = detect(message)
     whole_set = claims_completeness(message)
-    ui = [f for f in changed_files(root) if UI_FILE.search(f)]
-    if not (claims or whole_set or ui):
-        return {}  # the common case: a regex sweep and one git status
+    files = changed_files(root)
+    ui = [f for f in files if UI_FILE.search(f)]
+    reporting = is_report(message)
+    if not (claims or whole_set or ui or reporting):
+        return {}  # a question or a turn still in progress: nothing to prove yet
 
     session_id = data.get("session_id", "")
     since = session_start(session_id, root)
@@ -372,13 +403,24 @@ def decide(data, root):
                 "one verified row per item. No row speaks to: " + named), "", 
                 "you called a whole set done"))
 
+    # Work reported back with no claim phrase the detector recognised still needs proof.
+    # Measured: on text it had never seen, the claim detector caught about two thirds
+    # of real claims. This rule doesn't depend on phrasing at all - the session
+    # changed code and the agent is handing back, so there has to be a row.
+    if reporting and not claims and not whole_set and not (receipt_ok and rows):
+        touched = [f for f in files if f != ".gitignore"][:3]
+        unmet.append(Claim(Family(
+            "work-unproven", "", None, False, False,
+            "one verified row for the work you did" + (" (" + ", ".join(touched) + ")" if touched else "") +
+            ": what you ran, and what you saw"),
+            "", "you changed code and reported back"))
+
     # UI you changed is UI someone has to look at, claim or no claim.
     if ui and not any(m == "real-ui" and artifact_is_real(a, root)
                       for _, m, a, _ in (rows if receipt_ok else [])):
         unmet.append(Claim(Family(
             "ui-unseen", "", {"real-ui"}, False, False,
-            "a screenshot for the UI you changed (" + ", ".join(ui[:3]) + ") saved in " +
-            core.run_folder(prompt_id, root) + "/ - not a temp dir, not your own context"),
+            "a screenshot of the UI you changed (" + ", ".join(ui[:3]) + ")"),
             "", "you changed UI this turn"))
     base = {"session_id": session_id, "prompt_id": prompt_id,
             "event_kind": data.get("hook_event_name", "Stop"),

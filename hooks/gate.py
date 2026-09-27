@@ -24,7 +24,7 @@ sys.path.insert(0, str(HERE.parent / "skills" / "pudding" / "scripts"))
 import pudding_core as core          # noqa: E402
 from claims import (Claim, Family, UI_FILE, claims_completeness,  # noqa: E402
                     detect, done_items)
-from pudding_check import parse_rows, env_of, check, PAIR_WORDS  # noqa: E402
+from pudding_check import METHODS, PAIR_WORDS, env_of, parse_rows  # noqa: E402
 
 # Runtime artifacts, not the code a claim is about. Without this, a background
 # writer (x-account's batch touches pipeline.db-wal every 10 minutes) ages out
@@ -96,12 +96,10 @@ def blocks_this_prompt(prompt_id, root):
 
 
 def source_changed(root, since):
-    """Did this session touch code? Talking about work is not claiming it.
+    """Did THIS session touch code? Talking about work is not claiming it.
 
-    Pudding's own writes do not count: its .gitignore lines, receipts, its log. The
-    first version counted them, so in a fresh repo every session looked like a code
-    change - and in the benchmark, an agent answering a pure question ("explain the
-    retry logic, change nothing") was blocked for describing a code path as "Done."
+    Pudding's own writes don't count (its .gitignore lines, receipts, log), and
+    neither do changes that predate the session.
     """
     try:
         inside = subprocess.run(["git", "-C", str(root), "rev-parse", "--is-inside-work-tree"],
@@ -110,7 +108,7 @@ def source_changed(root, since):
             return True  # not a repo we can read: stay armed rather than guess
     except Exception:
         return True
-    if any(f != ".gitignore" for f in changed_files(root)):
+    if any(f != ".gitignore" for f in session_files(root, since)):
         return True
     return newest_source_commit(root, since) >= since > 0
 
@@ -193,6 +191,23 @@ def changed_files(root):
     return out
 
 
+def session_files(root, since):
+    """Files changed in THIS session: dirty now and modified after it started.
+
+    A tree with old uncommitted changes is normal. Counting those made every turn of a
+    new session look like it had done work - a /pudding-stats call got hijacked into
+    re-verifying a file the previous session had edited.
+    """
+    out = []
+    for rel in changed_files(root):
+        try:
+            if (root / rel).stat().st_mtime >= since:
+                out.append(rel)
+        except OSError:
+            out.append(rel)  # deleted this session - that is a change too
+    return out
+
+
 def newest_source_mtime(root):
     """When the code last changed. Evidence written before the code it describes is
     evidence for different work - the first live session accepted a four-minute-old
@@ -259,6 +274,26 @@ def fresh_receipt(root, since):
     except Exception:
         return None
     return max(cands, key=lambda p: p.stat().st_mtime) if cands else None
+
+
+def evidence_findings(text):
+    """What the gate insists on: rows exist, and every verified row names a real
+    method and a real artifact. Receipt hygiene (tier, cleanup, a Not-tested
+    section) is the linter's business, not a reason to hold a turn - an agent that
+    wrote honest rows with a slightly different header was blocked three times and
+    escaped, which is the paperwork failure this tool must not have.
+    """
+    rows = parse_rows(text)
+    if not rows:
+        return ["the receipt has no rows"]
+    out = []
+    for claim, method, artifact, status in rows:
+        if status.lower().startswith("verified"):
+            if method not in METHODS:
+                out.append(f"row '{claim[:40]}': method '{method}' is not one of {', '.join(sorted(METHODS))}")
+            if artifact.strip() in ("", "-"):
+                out.append(f"row '{claim[:40]}': verified with no artifact")
+    return out
 
 
 def verified_rows(text):
@@ -364,16 +399,16 @@ def decide(data, root):
         return {}  # no prompt_id to count against, so fall back to the coarse guard
 
     message = data.get("last_assistant_message") or ""
+    session_id = data.get("session_id", "")
+    since = session_start(session_id, root)
     claims = detect(message)
     whole_set = claims_completeness(message)
-    files = changed_files(root)
+    files = session_files(root, since)
     ui = [f for f in files if UI_FILE.search(f)]
     reporting = is_report(message)
     if not (claims or whole_set or ui or reporting):
         return {}  # a question or a turn still in progress: nothing to prove yet
 
-    session_id = data.get("session_id", "")
-    since = session_start(session_id, root)
     if not source_changed(root, since):
         return {}
 
@@ -384,7 +419,7 @@ def decide(data, root):
     receipt = fresh_receipt(root, since)
     text = receipt.read_text(encoding="utf-8-sig") if receipt else ""
     rows, env = verified_rows(text), env_of(text)
-    findings = check(receipt) if receipt else ["no receipt written this session"]
+    findings = evidence_findings(text) if receipt else ["no receipt written this session"]
     receipt_ok = bool(receipt) and not findings
 
     unmet = [c for c in claims if not (receipt_ok and satisfies(c.family, rows, env, root))]
@@ -433,7 +468,7 @@ def decide(data, root):
 
     text = render(unmet, receipt, rows, root, core.run_folder(prompt_id, root))
     if receipt and findings:
-        text += "\n\n  " + receipt.name + " also fails the receipt rules:\n" + \
+        text += "\n\n  " + receipt.name + " doesn't hold up yet:\n" + \
                 "\n".join(f"   - {f}" for f in findings[:4])
 
     if mode == "warn":

@@ -218,6 +218,30 @@ env: {env}
         (root / "receipts" / "r.md").write_text(RECEIPT.format(rows=UNIT, env="local"))
         assert run(root, plain, prompt_id="w4") == {}, "a fresh verified row earns a plain report"
 
+    with tempfile.TemporaryDirectory() as td:  # old dirty files are not this session's work
+        root = Path(td)
+        sp.run(["git", "init", "-q", str(root)], check=True)
+        (root / "app.py").write_text("x = 1\n")
+        sp.run(["git", "-C", str(root), "add", "-A"], check=True)
+        sp.run(["git", "-C", str(root), "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "b"],
+               check=True, capture_output=True)
+        import os as _os, time as _t
+        (root / "app.py").write_text("x = 2\n")                          # last session's edit, uncommitted
+        old = _t.time() - 600
+        _os.utime(root / "app.py", (old, old))
+        core.log({"event": "armed", "session_id": "new"}, root)            # a new session starts now
+        report = "Here are this project's stats: 4 claims, 1 earned."
+        assert decide({"last_assistant_message": report, "session_id": "new", "prompt_id": "n1"}, root) == {}, \
+            "a dirty tree from before the session must not make this turn owe evidence"
+
+    with tempfile.TemporaryDirectory() as td:  # the gate wants evidence, not paperwork
+        root = setup(td, None)
+        (root / "receipts" / "loose.md").write_text(
+            "# notes\n**Tier:** dev\n\n| claim | method | artifact | status |\n|---|---|---|---|\n"
+            "| script prints hi | unit | ran python3 app.py -> hi | verified |\n")
+        out = run(root, "Added the comment and ran the script; it prints hi.", prompt_id="loose")
+        assert out == {}, f"honest rows in a loosely formatted receipt earn a plain report: {out}"
+
     with tempfile.TemporaryDirectory() as td:  # pudding's own writes are not a code change
         root = Path(td)
         sp.run(["git", "init", "-q", str(root)], check=True)

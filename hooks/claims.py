@@ -163,7 +163,10 @@ FAMILIES = [
         r"|\b(?:behaves|works|renders|loads|runs|saves|syncs|resolves) correctly\b|(?:\s[\u2014-]|;)\s*verified\b"
         r"|you're all set|that's (?:done|sorted|fixed|in|shipped)|\ball (?:\d+ )?(?:tests? )?pass(?:ing)?\b"
         r"|\b(?:tests?|suite|checks?|ci|build) (?:is |are )?(?:all )?(?:green|passing)\b"
-        r"|\b(?:is|are|'s) (?:now )?" + _STATE + r"\b"
+        r"|\b(?:is|are|'s) (?:now |fully |all |already |genuinely |properly )?" + _STATE + r"\b"
+        r"|\b(?:it|that|this) (?:all )?worked\b|^\s*(?:proven|confirmed|verified)\s*[:\u2014-]"
+        r"|\b(?:task|change|fix|feature|work)\s*\d*\s+(?:is )?committed\b|^\s*committed\b"
+        r"|\b(?:is|are) (?:now )?(?:up at|ready)\b|verified (?:genuinely |actually )?(?:usable|working)"
         r"|\b(?:built|tested|merged|shipped|verified|confirmed)(?:,| and) (?:tested|merged|verified|deployed|shipped)\b"
         r"|\ball \d+ \w+ (?:pass|match|succeed)|\beverything'?s in\b|\bnothing left\b"
         r"|\b(?:tracked|worked|behaved|rendered|loaded|synced|saved|formatted) correctly\b"
@@ -256,7 +259,9 @@ def strip_quoted(text: str) -> str:
     """
     for rx in (_FENCE, _INLINE, _BLOCKQUOTE, _QUOTED, _SQUOTED):
         text = rx.sub(" . ", text)
-    return text
+    # Agents bold their verdicts ("**Fixed and live.**"). The asterisks sat between the
+    # start of the sentence and every pattern anchored there, so those never matched.
+    return re.sub(r"\*\*|__|(?<![\w*])\*(?=\w)|(?<=\w)\*(?![\w*])", "", text)
 
 
 def done_items(message: str):

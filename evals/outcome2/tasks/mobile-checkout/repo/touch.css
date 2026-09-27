@@ -1,0 +1,26 @@
+/* Touch devices: bigger tap targets (48px min, per the accessibility audit) and the
+   app-style tab bar instead of the desktop header links. */
+@media (hover: none) and (pointer: coarse) {
+  .save-later,
+  .btn-checkout {
+    min-height: 48px;
+    padding: 14px 22px;
+    font-size: 17px;
+  }
+  .tabbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 84px;             /* 50px bar + home-indicator area */
+    padding-bottom: 34px;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.97);
+    border-top: 1px solid #e2ded5;
+    z-index: 20;
+  }
+  .tabbar a { color: #1f1d1a; text-decoration: none; font-size: 12px; }
+  .tabbar a[aria-current="page"] { color: #1f6f4a; font-weight: 600; }
+}

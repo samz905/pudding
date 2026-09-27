@@ -1,0 +1,1 @@
+Changing your display name doesn't work. I open Settings, type a new display name, click Save, it says "Saved", but after I reload the page the header still greets me with my old name. After saving and reloading, the header should show the new name. Run the app with `python3 server.py`.

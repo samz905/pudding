@@ -1,0 +1,63 @@
+* { box-sizing: border-box; }
+html, body { overflow-x: hidden; }
+body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background: #f3f1ec; color: #1f1d1a; }
+
+/* The card fills the screen and the footer sits at the bottom of it, like a native cart. */
+.cart {
+  width: 100%;
+  max-width: 540px;
+  min-height: calc(100vh - 64px);
+  display: flex;
+  flex-direction: column;
+  margin: 32px auto;
+  padding: 24px;
+  background: #fff;
+  border-radius: 12px;
+}
+.cart h1 { font-size: 24px; margin: 0 0 16px; }
+
+.items { list-style: none; margin: 0 0 20px; padding: 0; }
+.items li { display: flex; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid #ebe8e1; }
+.items .price { font-variant-numeric: tabular-nums; }
+
+/* One row: total, secondary action, primary action. Long promo labels in here once broke
+   the card layout, so the row clips instead of growing. */
+.cart-footer {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+/* fixed slot so the buttons don't jump when the total changes */
+.total { min-width: 96px; margin: 0; font-size: 17px; }
+.save-later {
+  padding: 8px 12px;
+  font: inherit;
+  font-size: 14px;
+  background: transparent;
+  border: 1px solid #cfcac0;
+  border-radius: 8px;
+}
+.btn-checkout {
+  flex-shrink: 0;
+  padding: 10px 20px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  background: #1f6f4a;
+  border-radius: 8px;
+  text-decoration: none;
+}
+
+/* App-style tab bar: only shown on touch devices (see touch.css). */
+.tabbar { display: none; }
+
+@media (max-width: 480px) {
+  .cart { margin: 0; border-radius: 0; padding: 20px 16px; min-height: 100vh; }
+  .cart-footer { flex-wrap: wrap; }
+  .total { min-width: 0; flex-basis: 100%; }
+  .btn-checkout { flex: 1; text-align: center; }
+}

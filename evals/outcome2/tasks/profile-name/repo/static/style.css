@@ -1,0 +1,8 @@
+body { margin: 0; font-family: system-ui, sans-serif; background: #f5f6f3; color: #202320; }
+.top { display: flex; justify-content: space-between; padding: 14px 24px; background: #fff; border-bottom: 1px solid #e3e5df; }
+main { max-width: 560px; margin: 24px auto; display: grid; gap: 24px; }
+section { background: #fff; border-radius: 10px; padding: 16px 20px; }
+section h2 { font-size: 16px; margin: 0 0 12px; }
+ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+#settings-form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+#settings-status { color: #2e7d32; font-size: 13px; }

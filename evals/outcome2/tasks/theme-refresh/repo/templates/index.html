@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Ledger</title>
+<link rel="stylesheet" href="/static/style.css">
+<script>window.__PREFS__ = {{ prefs_json }};</script>
+</head>
+<body>
+<header class="bar">
+  <h1>Ledger</h1>
+  <button id="theme-toggle" type="button" aria-pressed="false">Dark mode</button>
+</header>
+<main>
+  <table class="entries">
+    <thead><tr><th>Date</th><th>Payee</th><th class="amt">Amount</th></tr></thead>
+    <tbody>
+      <tr><td>Sep 02</td><td>Blue Bottle</td><td class="amt">-4.50</td></tr>
+      <tr><td>Sep 03</td><td>Payroll</td><td class="amt">2,400.00</td></tr>
+      <tr><td>Sep 05</td><td>Muni</td><td class="amt">-2.75</td></tr>
+    </tbody>
+  </table>
+</main>
+<script src="/static/theme.js"></script>
+<script src="/static/app.js"></script>
+<script src="/static/prefs.js"></script>
+</body>
+</html>

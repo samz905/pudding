@@ -1,0 +1,1 @@
+Customers on the live site can't use lowercase discount codes. Typing `save10` at checkout gets rejected; only `SAVE10` works. Codes should work no matter how they're typed. The live site runs in production mode (`APP_ENV=production python3 server.py`). Can you fix it?

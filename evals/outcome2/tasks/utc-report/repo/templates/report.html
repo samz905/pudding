@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Daily orders</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 32px; color: #222; }
+  .day { margin-bottom: 28px; }
+  .day-title { font-size: 18px; border-bottom: 2px solid #222; padding-bottom: 4px; }
+  table { border-collapse: collapse; min-width: 420px; }
+  td, th { text-align: left; padding: 4px 12px 4px 0; }
+  .amt { text-align: right; font-variant-numeric: tabular-nums; }
+  .day-total { color: #666; font-size: 13px; }
+</style>
+</head>
+<body>
+<h1>Daily orders</h1>
+{{ sections }}
+<script>
+  // Friendlier day headings: "Wed, Jul 1, 2026" instead of "2026-07-01".
+  document.querySelectorAll(".day").forEach(function (section) {
+    var d = new Date(section.dataset.day);
+    section.querySelector(".day-title").textContent = d.toLocaleDateString("en-US", {
+      weekday: "short", month: "short", day: "numeric", year: "numeric"
+    });
+  });
+</script>
+</body>
+</html>

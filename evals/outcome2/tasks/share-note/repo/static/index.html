@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Notes</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<main>
+  <section id="signin" hidden>
+    <h1>Notes</h1>
+    <form id="signin-form">
+      <label for="username">Username</label>
+      <input id="username" autocomplete="username">
+      <button type="submit">Sign in</button>
+    </form>
+  </section>
+  <section id="app" hidden>
+    <header><h1>Notes</h1><span id="who"></span> <button id="signout" type="button">Sign out</button></header>
+    <form id="new-note">
+      <input id="new-title" placeholder="New note title" aria-label="New note title">
+      <button type="submit">Add note</button>
+    </form>
+    <ul id="notes"></ul>
+    <section id="shared-section" class="is-empty" hidden>
+      <h2>Shared with me</h2>
+      <ul id="shared-notes"></ul>
+    </section>
+  </section>
+</main>
+<script src="/static/app.js"></script>
+</body>
+</html>

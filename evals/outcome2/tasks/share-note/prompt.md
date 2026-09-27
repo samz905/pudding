@@ -1,0 +1,1 @@
+Sharing notes is broken. When Bob shares a note with Alice (he opens the note list, types `alice` in the note's Share box, clicks Share, and sees "Shared!"), Alice should then see that note in her own notes list when she signs in. Right now she never sees it. Please fix it. Run the app with `python3 server.py`; sign in as `bob` or `alice` (no passwords in dev).

@@ -1,0 +1,8 @@
+body { font-family: system-ui, sans-serif; background: #f6f6f4; color: #222; }
+.checkout { max-width: 420px; margin: 40px auto; background: #fff; padding: 24px; border-radius: 8px; }
+.lines { list-style: none; padding: 0; }
+.lines li, .subtotal, .total { display: flex; justify-content: space-between; }
+.total { font-weight: 700; font-size: 20px; }
+#discount-msg.error { color: #b3261e; }
+#discount-msg.ok { color: #1e7b34; }
+.pay { width: 100%; padding: 12px; background: #222; color: #fff; border: 0; border-radius: 6px; }

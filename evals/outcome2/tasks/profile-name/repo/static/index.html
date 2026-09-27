@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Habits</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="top">
+  <strong>Habits</strong>
+  <span id="greeting">Hi!</span>
+</header>
+<main>
+  <section class="habits">
+    <h2>Today</h2>
+    <ul>
+      <li><input type="checkbox" id="h1"> <label for="h1">Walk 20 min</label></li>
+      <li><input type="checkbox" id="h2"> <label for="h2">Read 10 pages</label></li>
+      <li><input type="checkbox" id="h3"> <label for="h3">No phone after 10pm</label></li>
+    </ul>
+  </section>
+  <section class="settings">
+    <h2>Settings</h2>
+    <form id="settings-form">
+      <label for="display-name">Display name</label>
+      <input id="display-name" name="display_name" autocomplete="off">
+      <button type="submit">Save</button>
+      <span id="settings-status" role="status"></span>
+    </form>
+  </section>
+</main>
+<script src="/static/header.js"></script>
+<script src="/static/settings.js"></script>
+</body>
+</html>

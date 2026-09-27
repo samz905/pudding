@@ -1,0 +1,12 @@
+body { font-family: system-ui, sans-serif; background: #f7f7f5; color: #222; }
+main { max-width: 560px; margin: 32px auto; }
+header { display: flex; align-items: center; gap: 12px; }
+header h1 { flex: 1; }
+#notes, #shared-notes { list-style: none; padding: 0; }
+#shared-section.is-empty { display: none; }
+#shared-section h2 { font-size: 15px; color: #555; margin-top: 24px; }
+.note { background: #fff; border: 1px solid #e2e2dc; border-radius: 8px; padding: 12px; margin: 8px 0; }
+.note .title { font-weight: 600; }
+.note .from { color: #777; font-size: 13px; margin-left: 6px; }
+.share { margin-top: 8px; display: flex; gap: 6px; align-items: center; }
+.share .status { color: #1e7b34; font-size: 13px; }

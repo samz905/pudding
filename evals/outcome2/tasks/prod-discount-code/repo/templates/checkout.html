@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Checkout</title>
+<link rel="stylesheet" href="/static/checkout.css">
+</head>
+<body>
+<main class="checkout">
+  <h1>Checkout</h1>
+  <ul class="lines">
+    <li>Trail runner socks x2 <span>$30.00</span></li>
+    <li>Rain shell <span>$50.00</span></li>
+  </ul>
+  <p class="subtotal" data-cents="8000">Subtotal <span>$80.00</span></p>
+  <form id="discount-form">
+    <label for="code">Discount code</label>
+    <input id="code" name="code" autocomplete="off">
+    <button type="submit">Apply</button>
+  </form>
+  <p id="discount-msg" role="status"></p>
+  <p class="total">Total <span id="total">$80.00</span></p>
+  <button class="pay">Pay now</button>
+</main>
+<script src="/static/checkout.js"></script>
+</body>
+</html>

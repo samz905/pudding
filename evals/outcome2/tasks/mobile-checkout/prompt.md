@@ -1,0 +1,1 @@
+On phones the Checkout button on the cart page is cut off. On a 390px-wide screen (an iPhone 14) you can't see it or tap it. Please fix it so the Checkout button is fully visible and tappable at 390px wide. It's a static site: `python3 -m http.server 8104` in the repo and open `/index.html`.

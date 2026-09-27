@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640">
+  <rect width="1280" height="640" fill="#FBF6EE"/>
+  <rect x="0" y="600" width="1280" height="40" fill="#F2C24F"/>
+  <g transform="translate(70 110) scale(1.05)">
+  <defs>
+    <linearGradient id="custard" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FBE3A0"/>
+      <stop offset="1" stop-color="#F2C24F"/>
+    </linearGradient>
+    <linearGradient id="caramel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#A4541B"/>
+      <stop offset="1" stop-color="#7A3B12"/>
+    </linearGradient>
+  </defs>
+  <!-- plate -->
+  <ellipse cx="200" cy="338" rx="150" ry="26" fill="#E7E2DA"/>
+  <ellipse cx="200" cy="334" rx="132" ry="18" fill="#F6F3EE"/>
+  <!-- body: a flan, wider at the base, with a slight wobble -->
+  <path d="M110 150 C 102 214, 88 270, 82 314 Q 200 350 318 314 C 312 270, 298 214, 290 150 Z"
+        fill="url(#custard)" stroke="#5A3212" stroke-width="6" stroke-linejoin="round"/>
+  <!-- caramel cap and drips: long runs at the edges, short scallops above the face -->
+  <path d="M102 150 Q 200 110 298 150 L 297 164
+           C 297 208, 274 210, 272 172 L 270 168
+           C 262 176, 250 176, 244 170
+           C 238 188, 222 188, 218 170
+           C 210 176, 196 176, 188 170
+           C 184 186, 170 186, 166 170
+           C 158 176, 146 176, 140 170
+           C 136 216, 110 214, 108 170 L 104 162 Z"
+        fill="url(#caramel)" stroke="#5A3212" stroke-width="6" stroke-linejoin="round"/>
+  <ellipse cx="200" cy="146" rx="96" ry="22" fill="#B8662A"/>
+  <ellipse cx="170" cy="140" rx="30" ry="6" fill="#D4894A" opacity=".7"/>
+  <path d="M120 196 C 116 236, 108 276, 104 300" fill="none" stroke="#FFF6D8" stroke-width="10" stroke-linecap="round" opacity=".8"/>
+  <!-- eyes: half-lidded, unimpressed -->
+  <g stroke="#3B2314" stroke-width="5" stroke-linecap="round">
+    <circle cx="165" cy="236" r="19" fill="#fff"/>
+    <circle cx="239" cy="236" r="19" fill="#fff"/>
+  </g>
+  <circle cx="169" cy="243" r="8" fill="#3B2314"/>
+  <circle cx="243" cy="243" r="8" fill="#3B2314"/>
+  <!-- heavy lids across the top half -->
+  <path d="M144 234 A 21 21 0 0 1 186 234 Z" fill="#E9B340" stroke="#3B2314" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M218 234 A 21 21 0 0 1 260 234 Z" fill="#E9B340" stroke="#3B2314" stroke-width="5" stroke-linejoin="round"/>
+  <!-- brows: one flat, one raised -->
+  <path d="M146 204 L 184 206" stroke="#3B2314" stroke-width="7" stroke-linecap="round"/>
+  <path d="M220 200 Q 240 186 260 196" fill="none" stroke="#3B2314" stroke-width="7" stroke-linecap="round"/>
+  <!-- mouth: flat, a little off to one side -->
+  <path d="M188 286 L 222 283" stroke="#3B2314" stroke-width="6" stroke-linecap="round"/>
+  <!-- cheek -->
+  <ellipse cx="132" cy="270" rx="12" ry="7" fill="#F29B4B" opacity=".45"/>
+  <!-- arm holding up a receipt -->
+  <path d="M292 248 C 318 244, 334 230, 340 208" fill="none" stroke="#5A3212" stroke-width="22" stroke-linecap="round"/>
+  <path d="M292 248 C 318 244, 334 230, 340 208" fill="none" stroke="#F2C24F" stroke-width="11" stroke-linecap="round"/>
+  <g transform="rotate(8 350 150)">
+    <path d="M318 84 L 382 84 L 382 196 L 374 188 L 366 196 L 358 188 L 350 196 L 342 188 L 334 196 L 326 188 L 318 196 Z"
+          fill="#FFFFFF" stroke="#3B2314" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M330 104 H 370 M330 122 H 362 M330 140 H 370 M330 158 H 356" stroke="#9A8F84" stroke-width="5" stroke-linecap="round"/>
+  </g>
+  <circle cx="340" cy="204" r="14" fill="#F2C24F" stroke="#5A3212" stroke-width="5"/>
+  </g>
+  <text x="560" y="250" font-family="Georgia, 'Times New Roman', serif" font-size="112" font-weight="700" fill="#3B2314">pudding</text>
+  <text x="564" y="316" font-family="-apple-system, 'Helvetica Neue', Arial, sans-serif" font-size="30" fill="#5A3212">The proof is in the pudding, not in the promise.</text>
+  <rect x="560" y="370" width="640" height="150" rx="14" fill="#1E1A17"/>
+  <text xml:space="preserve" x="588" y="418" font-family="Menlo, monospace" font-size="24" fill="#EDE6DD">you said   it works end to end</text>
+  <text xml:space="preserve" x="588" y="456" font-family="Menlo, monospace" font-size="24" fill="#EDE6DD">you have   3 unit, 1 api</text>
+  <text xml:space="preserve" x="588" y="494" font-family="Menlo, monospace" font-size="24" fill="#F2C24F">you need   a screenshot you can open</text>
+  <text x="564" y="572" font-family="-apple-system, 'Helvetica Neue', Arial, sans-serif" font-size="26" fill="#8C7B6B">A Claude Code plugin. Install once. Accountable forever.</text>
+</svg>

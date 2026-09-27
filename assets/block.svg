@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="475" viewBox="0 0 920 475">
+<style>text{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:15px;white-space:pre}</style>
+<rect width="920" height="475" rx="12" fill="#1E1A17"/>
+<rect width="920" height="36" rx="12" fill="#2A2420"/><rect y="24" width="920" height="12" fill="#2A2420"/>
+<circle cx="22" cy="18" r="6" fill="#FF5F57"/><circle cx="42" cy="18" r="6" fill="#FEBC2E"/><circle cx="62" cy="18" r="6" fill="#28C840"/>
+<text x="460" y="23" fill="#8C8076" text-anchor="middle" style="font-size:13px">claude</text>
+<text xml:space="preserve" x="28" y="58" fill="#8C8076">&gt; fix the discount on checkout and make sure it actually works</text>
+<text xml:space="preserve" x="28" y="81" fill="#8C8076"></text>
+<text xml:space="preserve" x="28" y="104" fill="#EDE6DD">⏺ Checkout is done - the discount flow works end to end in the browser, all 42 tests pass.</text>
+<text xml:space="preserve" x="28" y="127" fill="#8C8076"></text>
+<text xml:space="preserve" x="28" y="150" fill="#FF8A7A">  ⎿  Stop hook error:</text>
+<text xml:space="preserve" x="28" y="173" fill="#F2C24F" font-weight="700">     🍮  no pudding, no done.</text>
+<text xml:space="preserve" x="28" y="196" fill="#B7AA9C">   </text>
+<text xml:space="preserve" x="28" y="219" fill="#EDE6DD">     you said     ...t is done - the discount flow works end to end in the browser, all 42 tests...</text>
+<text xml:space="preserve" x="28" y="242" fill="#EDE6DD">     you have     3 unit, 1 api</text>
+<text xml:space="preserve" x="28" y="265" fill="#F2C24F">     you need     a real-ui artifact: a screenshot, a DOM capture, or the URL you actually drove</text>
+<text xml:space="preserve" x="28" y="288" fill="#F2C24F">     and          a screenshot for the UI you changed (checkout.tsx) saved in receipts/evidence/2026-09-27-a91f3c/ - not a temp dir, not your own context</text>
+<text xml:space="preserve" x="28" y="311" fill="#B7AA9C">   </text>
+<text xml:space="preserve" x="28" y="334" fill="#B7AA9C">     go look at it. save what you capture in receipts/evidence/2026-09-27-a91f3c/</text>
+<text xml:space="preserve" x="28" y="357" fill="#B7AA9C">     add a row to receipts/&lt;feature&gt;-&lt;date&gt;.md, then say it again.</text>
+<text xml:space="preserve" x="28" y="380" fill="#B7AA9C">     can&#x27;t reach it? write it down honestly and say so:</text>
+<text xml:space="preserve" x="28" y="403" fill="#B7AA9C">      | works end to end | - | - | blocked: &lt;why&gt; |</text>
+<text xml:space="preserve" x="28" y="426" fill="#B7AA9C">     (a softer sentence with the same meaning is not a way out.)</text>
+</svg>

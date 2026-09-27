@@ -1,12 +1,16 @@
-# Receipt format (v0) - normative
+# Receipt format (v1) - normative
 
 A receipt is a markdown file the agent fills **while** testing, from which the
 done-report is generated. Plain markdown + a five-value method enum. Zero configuration.
 Agent-agnostic by construction.
 
-## File
+## Files
 
-`receipts/<feature-slug>-<YYYY-MM-DD>.md` in the project the work happened in.
+- `receipts/<feature-slug>-<YYYY-MM-DD>.md` at the **project root** - the one folder the
+  gate reads. Committed with the code, so the proof travels with it.
+- `receipts/evidence/<YYYY-MM-DD>-<request>/` - screenshots, DOM captures, logs. One
+  folder per user request, named to the agent at the start of every prompt. Gitignored
+  by default; `/pudding evidence <dir>` moves it.
 
 ## Schema
 
@@ -42,12 +46,26 @@ env: <where artifacts were captured>    # e.g. "real Chrome, Windows" / "headles
   not a judgment call.
 - **artifact** - pointable by a third party: file path, screenshot path, query + result,
   before→after values, named test. Prose is not an artifact.
+  A `real-ui` artifact must be a **file inside the evidence folder** that exists, is
+  non-empty, and - for .png/.jpg/.gif/.webp - really is an image. A path in a temp dir,
+  or an image read into the agent's own context and never saved, does not count.
 - **status** - `verified` · `unverified` · `blocked: <reason>` · `waived: <who/when>`.
   `blocked` surfaces a decision; `waived` records one already made. Both are visible
   rows, never deletions.
 - **Not tested** - residue only: blockers and out-of-tier items. Anything testable and
   in-scope belongs in the table as a row, tested.
 - **Cleanup** - test data is tagged at creation and its absence asserted at the end.
+
+## Freshness
+
+A receipt only counts if it is newer than the code it describes: newer than every file
+`git status` reports changed and every commit that touched non-runtime files since.
+Evidence written before the code moved on is evidence for different work.
+
+## Sets
+
+A claim about a set - "all items built", "everything except X", or a Done list beside a
+Not-done list - needs **one verified row per item**. One row cannot stand in for fifteen.
 
 ## Validity
 

@@ -68,10 +68,15 @@ def scan(files, want_examples=0):
                 had_line = True
                 if d.get("timestamp"):
                     days.add(d["timestamp"][:10])
-                for b in (d.get("message") or {}).get("content") or []:
+                msg = d.get("message") or {}
+                # Only what the user read as the answer: the text that ended a turn.
+                # Mid-turn narration ("found it, the bug is in X") is not a report,
+                # and it is not what the gate checks either.
+                final = msg.get("stop_reason") in ("end_turn", None)
+                for b in msg.get("content") or []:
                     if not isinstance(b, dict):
                         continue
-                    if b.get("type") == "text" and b.get("text"):
+                    if b.get("type") == "text" and b.get("text") and final:
                         c["messages"] += 1
                         found = detect(b["text"])
                         if found:
@@ -93,16 +98,19 @@ def scan(files, want_examples=0):
     return c, fams, examples, sorted(days), len(projects)
 
 
-def report(c, fams, examples, days, nprojects):
+def report(c, fams, examples, days, nprojects, here=False):
     if not c["sessions"]:
+        if here:
+            return ("pudding audit: no finished sessions recorded for this project yet. "
+                    "Run it without --here to count every project.")
         return "pudding audit: no Claude Code transcripts found under " + str(config_dir() / "projects")
     span = f"{days[0]} to {days[-1]}" if days else "unknown dates"
     pct = (100 * c["claims"] / c["messages"]) if c["messages"] else 0
     lines = [
         f"\U0001F36E pudding audit - {c['sessions']} sessions across {nprojects} project(s), {span}",
         "",
-        f"  messages from your agent        {c['messages']:>6}",
-        f"  ...that claimed work was done   {c['claims']:>6}   ({pct:.1f}%)",
+        f"  turns your agent ended          {c['messages']:>6}",
+        f"  ...on a claim that work was done{c['claims']:>6}   ({pct:.1f}%)",
         f"  verification skill invoked      {c['verify']:>6}",
         f"  receipts written                {c['receipts']:>6}",
         "",
@@ -128,6 +136,8 @@ def demo():
              "message": {"content": [{"type": "text", "text": "Done. It works end to end in the browser."}]}},
             {"type": "assistant", "timestamp": "2026-09-02T00:00:00Z",
              "message": {"content": [{"type": "text", "text": "Here is the plan for tomorrow."}]}},
+            {"type": "assistant", "message": {"stop_reason": "tool_use",
+             "content": [{"type": "text", "text": "Found it, the bug is fixed in cart.py. Checking now."}]}},
             {"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "Skill",
                                                            "input": {"skill": "pudding"}}]}},
             {"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "Write",
@@ -156,7 +166,8 @@ def main():
     if "--examples" in args:
         i = args.index("--examples")
         n = int(args[i + 1]) if i + 1 < len(args) and args[i + 1].isdigit() else 5
-    print(report(*scan(transcripts(here="--here" in args), want_examples=n)))
+    here = "--here" in args
+    print(report(*scan(transcripts(here=here), want_examples=n), here=here))
 
 
 if __name__ == "__main__":

@@ -47,18 +47,22 @@ def main():
     earned, blocked, unearned, escaped = c["earned"], c["blocked"], c["unearned"], c["escaped"]
 
     if "--stats" in sys.argv:
+        # Decisions, not claims: one claim can be blocked, then earned on the retry.
         total = earned + blocked + unearned + escaped
         if not total:
-            print("pudding: no claims recorded yet in this project.")
+            print("pudding: no decisions recorded yet in this project.")
             return
-        print(f"claims made        {total}")
-        print(f"  earned           {earned}")
-        print(f"  blocked          {blocked}")
-        print(f"  shipped unearned {unearned}   (mode was warn)")
-        print(f"  escaped          {escaped}   (repeated past the block budget)")
-        print(f"\n{100 * earned // total}% of done-claims carried matching evidence.")
-        if c["mode"]:
-            print(f"mode changed {c['mode']} time(s); sessions armed: {c['armed']}")
+        first_try = earned
+        print(f"\U0001F36E pudding stats - {root.name}")
+        print()
+        print(f"  turns that ended on a claim     {total}")
+        print(f"    had matching evidence         {earned}")
+        print(f"    blocked for missing evidence  {blocked}")
+        print(f"    let through in warn mode      {unearned}")
+        print(f"    escaped after 3 blocks        {escaped}")
+        print()
+        print(f"  {100 * first_try // total}% of those turns carried matching evidence.")
+        print(f"  sessions armed: {c['armed']}   mode changes you made: {c['mode']}")
         return
 
     if earned or blocked or unearned:

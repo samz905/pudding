@@ -19,7 +19,7 @@ from collections import defaultdict
 from pathlib import Path
 
 CONTROLS = {"control-rename", "control-question"}
-ARMS = ["vanilla", "prompt", "nag", "pudding"]
+ARMS = ["vanilla", "prompt", "nag", "pudding", "pudding-v5"]
 
 
 def wilson(k, n, z=1.96):

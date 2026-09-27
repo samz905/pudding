@@ -38,3 +38,16 @@ only after the matrix finishes so that the two runners never share ports.
 
 `analyze.py` reports whichever arms appear in the data, in the pre-registered order
 followed by `pudding-v5`. No definition or metric changes.
+
+## Amendment before any run (the arm has produced no data)
+
+Between the first commit of this addendum (`2052a11`) and its first run, the
+end-to-end suite found two more flaws, fixed in `f14b75e`:
+
+- work is scoped to the session: files modified after the session started, or
+  commits since - old uncommitted changes no longer count;
+- the gate holds a turn over evidence (rows exist; verified rows name a real
+  method and artifact; the receipt is fresh), no longer over receipt formatting.
+
+The `pudding-v5` arm runs at the commit that contains this amendment. The runner
+records that commit in each run's `manifest.json`.

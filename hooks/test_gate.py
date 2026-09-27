@@ -205,6 +205,25 @@ env: {env}
         out = run(root, "Rewrote the button.")
         assert out == {}, f"a real screenshot clears it: {out}"
 
+    with tempfile.TemporaryDirectory() as td:  # pudding's own writes are not a code change
+        root = Path(td)
+        sp.run(["git", "init", "-q", str(root)], check=True)
+        (root / "net.py").write_text("x = 1\n")
+        sp.run(["git", "-C", str(root), "add", "-A"], check=True)
+        sp.run(["git", "-C", str(root), "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "b"],
+               check=True, capture_output=True)
+        import os as _os, time as _t
+        base = _t.time() - 120
+        _os.utime(root / "net.py", (base, base))
+        core.log({"event": "armed", "session_id": "q"}, root)       # session starts after the commit
+        core.ensure_ignored(root)                                    # pudding edits .gitignore
+        explain = "1. The request succeeds and resp.read() is returned immediately. Done."
+        out = decide({"last_assistant_message": explain, "session_id": "q", "prompt_id": "q1"}, root)
+        assert out == {}, f"a question answered with no code change must not be blocked: {out}"
+        (root / "net.py").write_text("x = 2\n")                    # now real code moves
+        out = decide({"last_assistant_message": explain, "session_id": "q", "prompt_id": "q2"}, root)
+        assert out.get("decision") == "block", "after a real change, the same claim is gated"
+
     print("gate: ok")
 
 

@@ -74,19 +74,23 @@ def blocks_this_prompt(prompt_id, root):
 
 
 def source_changed(root, since):
-    """Did this session touch code? Talking about work is not claiming it."""
+    """Did this session touch code? Talking about work is not claiming it.
+
+    Pudding's own writes do not count: its .gitignore lines, receipts, its log. The
+    first version counted them, so in a fresh repo every session looked like a code
+    change - and in the benchmark, an agent answering a pure question ("explain the
+    retry logic, change nothing") was blocked for describing a code path as "Done."
+    """
     try:
-        st = subprocess.run(["git", "-C", str(root), "status", "--porcelain", "-uall"],
-                            capture_output=True, text=True, timeout=3)
-        if st.returncode == 0 and st.stdout.strip():
-            return True
-        ct = subprocess.run(["git", "-C", str(root), "log", "-1", "--format=%ct"],
-                            capture_output=True, text=True, timeout=3)
-        if ct.returncode == 0 and ct.stdout.strip():
-            return int(ct.stdout.strip()) >= since
+        inside = subprocess.run(["git", "-C", str(root), "rev-parse", "--is-inside-work-tree"],
+                                capture_output=True, text=True, timeout=3)
+        if inside.returncode != 0:
+            return True  # not a repo we can read: stay armed rather than guess
     except Exception:
-        pass
-    return True  # never let a git failure quietly disarm the gate
+        return True
+    if any(f != ".gitignore" for f in changed_files(root)):
+        return True
+    return newest_source_commit(root, since) >= since > 0
 
 
 PATHY = re.compile(r"[\w./\\-]+\.(?:png|jpe?g|gif|webp|svg|mhtml?|html?|pdf|txt|json|log|md|mov|mp4)")

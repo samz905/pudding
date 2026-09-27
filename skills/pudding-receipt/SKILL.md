@@ -7,6 +7,10 @@ allowed-tools: [Read, Write, Glob, Bash]
 
 Create `receipts/<feature-slug>-<YYYY-MM-DD>.md` for: **$ARGUMENTS**
 
+It goes in **the project you are working in**: !`pwd`/receipts/ - never in this skill's own
+directory. (A receipt written next to this file lands in the plugin's install cache, where
+pudding never reads it and the user never sees it.)
+
 Today: !`date +%Y-%m-%d` · Existing receipts: !`ls receipts/*.md 2>/dev/null | tail -5`
 
 Write the file with this shape, then keep filling it **as you test** — a receipt

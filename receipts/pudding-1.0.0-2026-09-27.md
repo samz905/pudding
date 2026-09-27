@@ -12,7 +12,8 @@ env: macOS 26 (Darwin 25.6), Claude Code 2.1.283, Python 3.12 and system Python 
 | the detector is 84% precise with 64% recall on a held-out split frozen before it existed | unit | receipts/evidence/2026-09-27-release/detector-heldout.txt | verified |
 | on fresh real messages, the detector is 78% precise with about 67% recall | db | evals/claims/results/real-world.md (blind-labeled sample of 120) | verified |
 | agents claim success on most of their failures, whatever you tell them | db | evals/outcome/REPORT.md (Study 1: 75-100% of failures, every arm) | verified |
-| pudding lowers false success against the same rules given as a prompt | db | evals/outcome2/ (Study 2, running at time of writing) | unverified |
+| pudding lowers false success against no help: 36% to 6% (-31 points, 95% CI -56 to -8) | db | evals/outcome2/REPORT.md (Study 2, pre-registered, 108 runs) | verified |
+| the Stop hook's enforcement adds benefit beyond the same rules given as a prompt | db | evals/outcome2/REPORT.md: 6% vs 3%, difference +3 points, CI 0 to +8 | verified: NOT demonstrated - the rules did the work on these tasks |
 | works on Windows | - | - | blocked: no Windows machine; hooks call python3, which Windows may not provide |
 | the social preview card is set on GitHub | - | assets/social.png exists | blocked: GitHub only accepts it through the web UI - a maintainer action |
 

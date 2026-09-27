@@ -7,7 +7,7 @@ folder, that's a bug; please open an issue.
 | question | where | headline |
 |---|---|---|
 | Does it recognise a completion claim? | [`claims/`](claims/) | On fresh real messages: 78% precision, ~67% recall. On synthetic held-out: 84% / 64%. [All rounds](claims/results/). |
-| Does it change what agents tell you? | [`outcome/`](outcome/) (Study 1), [`outcome2/`](outcome2/) (Study 2) | See each `REPORT.md`. |
+| Does it change what agents tell you? | [`outcome/`](outcome/) (Study 1), [`outcome2/`](outcome2/) (Study 2) | Study 2: false success 36% without help, 6% with pudding (-31 points, CI -56 to -8); the rules alone as a prompt reached 3%, so the hook added no measurable benefit on top. Study 1 measured the problem, not the effect. |
 | Does every feature work in a real session? | [`e2e/`](e2e/) | 12 scenarios, each a real headless Claude Code session. |
 
 ## Principles

@@ -1,0 +1,39 @@
+name: check
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  self-checks:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python: ["3.9", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: git identity for the gate tests
+        run: git config --global user.email ci@example.com && git config --global user.name ci
+      - name: every self-check
+        run: |
+          python hooks/pudding_core.py
+          python hooks/claims.py
+          python hooks/mode.py --demo
+          python hooks/arm.py --demo
+          python hooks/test_gate.py
+          python statusline/pudding.py --demo
+          python skills/pudding/scripts/pudding_check.py --demo
+          python skills/pudding/scripts/audit.py --demo
+      - name: dogfood receipts are valid
+        run: cd . && python skills/pudding/scripts/pudding_check.py --all
+      - name: detector on the held-out splits (numbers in the README come from here)
+        run: |
+          for split in evals/claims/*.jsonl; do
+            name=$(basename "$split" .jsonl)
+            python evals/claims/eval.py "$name" | head -6
+          done

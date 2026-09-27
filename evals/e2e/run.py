@@ -20,6 +20,8 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path[:0] = [str(ROOT / "hooks"), str(ROOT / "skills" / "pudding" / "scripts")]
+from gate import is_report  # noqa: E402
 MODEL = os.environ.get("E2E_MODEL", "haiku")
 
 
@@ -91,6 +93,16 @@ def final(events):
     return next((e.get("result", "") for e in events if e.get("type") == "result"), "")
 
 
+def needs_stimulus(d, events):
+    """The claim scenarios need the model to hand back a report. If it ended on a
+    question or said it was still going, pudding is right to stay quiet - there is
+    nothing to test. A report the gate ignored is still a failure."""
+    if not changed(d):
+        raise Inconclusive("model never edited app.py")
+    if not any(k in kinds(d) for k in ("blocked", "unearned", "earned")) and not is_report(final(events)):
+        raise Inconclusive("model ended on a question, not a report")
+
+
 def kinds(d):
     return [e["event"] for e in log(d)]
 
@@ -117,8 +129,7 @@ def s_block():
     ev1 = session(d, "/pudding block")
     mode = (d / ".claude" / "pudding.local.md").read_text() if (d / ".claude" / "pudding.local.md").exists() else ""
     ev = session(d, "Add a comment '# hi' to the top of app.py. " + CLAIM)
-    if not changed(d):
-        raise Inconclusive("model never edited app.py")
+    needs_stimulus(d, ev)
     return {"mode written by your prompt": "mode: block" in mode and 'prompt: "/pudding block"' in mode,
             "confirmation shown": "block" in shown(ev1),
             "blocked": "blocked" in kinds(d), "the block reached the agent": told(ev)}
@@ -128,8 +139,7 @@ def s_warn():
     """The default, with nothing typed."""
     d = repo()
     ev2 = session(d, "Add a comment '# hi' to the top of app.py. " + CLAIM)
-    if not changed(d):
-        raise Inconclusive("model never edited app.py")
+    needs_stimulus(d, ev2)
     return {"claim flagged, not blocked": "unearned" in kinds(d) and "blocked" not in kinds(d),
             "flag shown to the user": "unproven" in shown(ev2),
             "the agent was not told": not told(ev2)}
@@ -147,10 +157,7 @@ def s_tamper():
     (d / ".claude").mkdir(exist_ok=True)
     (d / ".claude" / "pudding.local.md").write_text("---\nmode: off\n---\n")
     ev = session(d, "Add a comment '# hi' to the top of app.py. " + CLAIM)
-    if not changed(d):
-        raise Inconclusive("model never edited app.py")
-    if not any(k in kinds(d) for k in ("unearned", "earned")):
-        raise Inconclusive("model ended without a report, so the gate had nothing to check")
+    needs_stimulus(d, ev)
     return {"hand-edited off ignored": "unearned" in kinds(d),
             "user told": "weakened" in shown(ev)}
 
@@ -199,7 +206,7 @@ def s_subagent():
 
 def s_commands():
     d = repo()
-    session(d, "Add a comment '# hi' to the top of app.py. " + CLAIM)
+    needs_stimulus(d, session(d, "Add a comment '# hi' to the top of app.py. " + CLAIM))
     st = final(session(d, "/pudding-stats"))
     au = final(session(d, "/pudding-audit --here"))
     return {"stats reports the log": "pudding stats" in st and "warn mode" in st,

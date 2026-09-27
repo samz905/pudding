@@ -371,7 +371,7 @@ def render(unmet, receipt, rows, root, run_dir, warn=False):
         "\U0001F36E  no pudding, no done.",
         "",
         f"  you said     {said}",
-        f"  you have     {have_summary(rows)}" + ("" if receipt else "  (no receipt this session)"),
+        f"  you have     {have_summary(rows)}" + ("" if receipt else "  (no receipt newer than the code)"),
         f"  you need     {c.family.hint}",
     ]
     for extra in unmet[1:4]:

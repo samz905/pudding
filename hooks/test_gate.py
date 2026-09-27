@@ -143,7 +143,7 @@ env: {env}
         (root / "src.py").write_text("x = 2\n")        # real code moves on; the receipt does not
         out = run(root, msg)
         assert out.get("decision") == "block", f"stale receipt must not earn a new claim: {out}"
-        assert "no receipt this session" in full(out)
+        assert "no receipt newer than the code" in full(out)
         commit("src change")                           # and status going blind must not rescue it
         out = run(root, msg)
         assert out.get("decision") == "block", f"committed code must still age the receipt: {out}"
@@ -197,7 +197,7 @@ env: {env}
     with tempfile.TemporaryDirectory() as td:  # no receipt at all
         root = setup(td, None)
         out = run(root, "Done and verified.")
-        assert out.get("decision") == "block" and "no receipt this session" in full(out), out
+        assert out.get("decision") == "block" and "no receipt newer than the code" in full(out), out
 
     with tempfile.TemporaryDirectory() as td:  # a set-claim needs a row per member
         root = setup(td, UI)

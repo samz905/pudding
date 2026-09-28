@@ -294,6 +294,23 @@ env: {env}
         core.state_path(root).write_text("---\nmode: off\n---\n")  # tampering still reported
         assert "reverted to warn" in run(root, "It works end to end in the browser.")["systemMessage"]
 
+    with tempfile.TemporaryDirectory() as td:  # an honest receipt in the agent's own words
+        # Real row from a recorded session: status "pass", screenshot linked relative to
+        # receipts/. The proof was on disk; flagging it was the paperwork failure again.
+        root = setup(td, None)
+        shot = root / "receipts" / "evidence" / "run1" / "after.jpg"
+        shot.parent.mkdir(parents=True)
+        shot.write_bytes(b"\xff\xd8\xff" + b"\0" * 64)
+        row = ("| clear completed removes done todos | real-ui | after click only the 2 not-done "
+               "items remained - [screenshot](evidence/run1/after.jpg) | pass |")
+        (root / "receipts" / "r.md").write_text(RECEIPT.format(rows=row, env="real Chrome"))
+        out = run(root, "It works. Verified in a real browser, screenshot saved.")
+        assert out == {}, f"a real screenshot linked from the receipt must earn it: {out}"
+        for bad in ("fail", "not verified", "blocked: no browser", "partial pass"):
+            (root / "receipts" / "r.md").write_text(RECEIPT.format(rows=row.replace("| pass |", f"| {bad} |"),
+                                                                   env="real Chrome"))
+            assert run(root, "It works.") != {}, f"status '{bad}' is not verified"
+
     from gate import is_report
     assert not is_report("Agent dispatched. It's working in the background now - I'll get a notification "
                          "when it completes."), "a dispatched background agent is not a hand-back"

@@ -1,6 +1,6 @@
 {
   "name": "pudding",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Your agent can't end a turn on 'it works' until the evidence is saved where you can open it. Checks the claim, not just the test command.",
   "author": {
     "name": "samz905",

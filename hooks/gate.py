@@ -159,17 +159,19 @@ def artifact_is_real(artifact, root):
     "You can't see them - I've been reading images into my own context, not
     rendering them in your terminal. My fault entirely; that's twice now."
 
-    So the artifact has to be inside the project's evidence dir.
+    So the artifact has to be inside the project's evidence dir. A path may be written
+    from the project root or, as a markdown link in the receipt would be, from receipts/.
     """
     root = root.resolve()
     ev = (root / core.evidence_dir(root)).resolve()
     for cand in PATHY.findall(artifact or ""):
-        try:
-            full = (root / cand.lstrip("./")).resolve()
-        except OSError:
-            continue
-        if full.exists() and ev in full.parents and looks_real(full):
-            return True
+        for base in (root, root / "receipts"):
+            try:
+                full = (base / cand.lstrip("./")).resolve()
+            except OSError:
+                continue
+            if full.exists() and ev in full.parents and looks_real(full):
+                return True
     return False
 
 
@@ -285,6 +287,15 @@ def fresh_receipt(root, since):
     return max(cands, key=lambda p: p.stat().st_mtime) if cands else None
 
 
+# Agents write "pass", "ok", "✅" as often as "verified". Refusing those is paperwork.
+VERIFIED = re.compile(r"^\W*(?:verified|pass(?:ed)?|ok|confirmed|✅|✓|✔)\b|^\W*(?:✅|✓|✔)", re.I)
+UNVERIFIED = re.compile(r"\b(?:not|no|fail\w*|blocked|partial\w*|unverified|skip\w*|todo|pending)\b", re.I)
+
+
+def is_verified(status):
+    return bool(VERIFIED.search(status or "")) and not UNVERIFIED.search(status or "")
+
+
 def evidence_findings(text):
     """What the gate insists on: rows exist, and every verified row names a real
     method and a real artifact. Receipt hygiene (tier, cleanup, a Not-tested
@@ -297,7 +308,7 @@ def evidence_findings(text):
         return ["the receipt has no rows"]
     out = []
     for claim, method, artifact, status in rows:
-        if status.lower().startswith("verified"):
+        if is_verified(status):
             if method not in METHODS:
                 out.append(f"row '{claim[:40]}': method '{method}' is not one of {', '.join(sorted(METHODS))}")
             if artifact.strip() in ("", "-"):
@@ -306,7 +317,7 @@ def evidence_findings(text):
 
 
 def verified_rows(text):
-    return [r for r in parse_rows(text) if r[3].lower().startswith("verified")]
+    return [r for r in parse_rows(text) if is_verified(r[3])]
 
 
 def satisfies(fam, rows, env, root):
